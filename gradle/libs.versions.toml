@@ -5,13 +5,14 @@ android-minSdk      = "26"
 android-targetSdk   = "35"
 
 agp                 = "8.7.3"
-kotlin              = "2.1.0"
-ksp                 = "2.1.0-1.0.29"
+kotlin              = "2.3.0"
+ksp                 = "2.3.5"
 
 coreKtx             = "1.16.0"
 activityCompose     = "1.10.1"
 composeBom          = "2025.04.00"
 lifecycle           = "2.9.0"
+material = "1.13.0"
 navigationCompose   = "2.9.0"
 hilt                = "2.56.2"
 hiltNavigation      = "1.2.0"
@@ -34,6 +35,7 @@ androidx-navigation-compose     = { group = "androidx.navigation",         name 
 hilt-android                    = { group = "com.google.dagger",           name = "hilt-android",                   version.ref = "hilt" }
 hilt-compiler                   = { group = "com.google.dagger",           name = "hilt-android-compiler",          version.ref = "hilt" }
 hilt-navigation-compose         = { group = "androidx.hilt",               name = "hilt-navigation-compose",        version.ref = "hiltNavigation" }
+material = { module = "com.google.android.material:material", version.ref = "material" }
 room-runtime                    = { group = "androidx.room",               name = "room-runtime",                   version.ref = "room" }
 room-ktx                        = { group = "androidx.room",               name = "room-ktx",                       version.ref = "room" }
 room-compiler                   = { group = "androidx.room",               name = "room-compiler",                  version.ref = "room" }

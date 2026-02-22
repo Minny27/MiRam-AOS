@@ -1,11 +1,50 @@
-*.iml
-.gradle
-/local.properties
+# =========================
+# Android / Gradle
+# =========================
+
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local properties (SDK 경로 등)
+local.properties
+
+# Generated files
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Signing
+*.jks
+*.keystore
+
+# =========================
+# Android Studio
+# =========================
+
 .idea/
+*.iml
+
+# OS files
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-*.apk
-*.aab
+Thumbs.db
+
+# =========================
+# Kotlin / KSP / KAPT
+# =========================
+
+# KSP
+**/build/generated/ksp/
+**/build/tmp/ksp/
+
+# KAPT
+**/build/generated/source/kapt/
+**/build/tmp/kapt/
+
+# =========================
+# NDK / JNI
+# =========================
+
+**/obj/
+**/libs/

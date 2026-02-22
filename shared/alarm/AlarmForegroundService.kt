@@ -34,6 +34,9 @@ class AlarmForegroundService : Service() {
         val ringDuration = intent?.getIntExtra(AlarmReceiver.EXTRA_RING_DURATION, 60) ?: 60
         val soundUri = intent?.getStringExtra(AlarmReceiver.EXTRA_SOUND_URI) ?: ""
 
+        // UI에 알람 발화 상태 전달 (포그라운드·백그라운드 모두 처리)
+        AlarmStateHolder.startRinging(alarmId, label, ringDuration)
+
         val notification = AlarmNotificationHelper.buildAlarmNotification(this, label, alarmId)
         startForeground(AlarmNotificationHelper.NOTIFICATION_ID, notification)
 
@@ -104,6 +107,7 @@ class AlarmForegroundService : Service() {
     }
 
     private fun stopAlarm() {
+        AlarmStateHolder.stopRinging()
         stopRunnable?.let { handler.removeCallbacks(it) }
         mediaPlayer?.runCatching { if (isPlaying) stop(); release() }
         mediaPlayer = null

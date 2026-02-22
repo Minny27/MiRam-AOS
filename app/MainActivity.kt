@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import com.example.miram.features.splash.SplashScreen
 import com.example.miram.routes.auth.AuthRoute
 import com.example.miram.routes.main.MainRoute
+import com.example.miram.shared.alarm.AlarmReceiver
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -17,11 +18,20 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val alarmId = intent?.getStringExtra(AlarmReceiver.EXTRA_ALARM_ID)
+        val alarmLabel = intent?.getStringExtra(AlarmReceiver.EXTRA_ALARM_LABEL)
+
         setContent {
             Surface(modifier = Modifier.fillMaxSize()) {
                 SplashScreen(
                     onAuthRequired = { AuthRoute() },
-                    onAuthenticated = { MainRoute() }
+                    onAuthenticated = {
+                        MainRoute(
+                            initialAlarmId = alarmId,
+                            initialAlarmLabel = alarmLabel
+                        )
+                    }
                 )
             }
         }

@@ -25,7 +25,17 @@ data class Alarm(
 
     val isOneTime: Boolean get() = repeatDays.isBlank()
 
+    /** 24시간 포맷 (예: "08:30") */
     val timeString: String get() = "%02d:%02d".format(hour, minute)
+
+    /** 12시간 포맷 (예: "08:30") */
+    val twelveHourTimeString: String get() {
+        val h = if (hour % 12 == 0) 12 else hour % 12
+        return "%02d:%02d".format(h, minute)
+    }
+
+    /** AM / PM */
+    val amPm: String get() = if (hour < 12) "AM" else "PM"
 }
 
 fun List<Weekday>.toRepeatDaysString(): String = joinToString(",") { it.value.toString() }

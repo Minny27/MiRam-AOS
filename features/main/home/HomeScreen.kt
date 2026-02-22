@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.miram.shared.model.Alarm
@@ -87,19 +88,30 @@ private fun AlarmItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = alarm.timeString,
-                fontSize = 40.sp,
-                color = if (alarm.isEnabled) MaterialTheme.colorScheme.onSurface
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (alarm.label.isNotBlank()) {
+            val timeColor = if (alarm.isEnabled) MaterialTheme.colorScheme.onSurface
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+            Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    alarm.label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = alarm.twelveHourTimeString,
+                    fontSize = 48.sp,
+                    fontWeight = FontWeight.Thin,
+                    color = timeColor
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = alarm.amPm,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = timeColor,
+                    modifier = Modifier.padding(bottom = 6.dp)
                 )
             }
+            Text(
+                text = alarm.label.ifBlank { "알람" },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (alarm.label.isNotBlank()) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            )
             if (weekdayLabels.isNotBlank()) {
                 Text(
                     weekdayLabels,

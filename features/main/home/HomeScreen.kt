@@ -1,21 +1,53 @@
 package com.example.miram.features.main.home
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import android.graphics.Paint.Align
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.miram.shared.model.Alarm
+import com.example.miram.shared.model.Weekday
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,44 +59,214 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("알람") }) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onAddAlarm) {
-                Icon(Icons.Default.Add, contentDescription = "알람 추가")
+        topBar = {
+            TopAppBar(
+                title = {
+                    if (uiState.selectionMode) {
+                        Text("${uiState.selectedIds.size}개 선택됨")
+                    } else {
+                        Text("알람", style = MaterialTheme.typography.headlineSmall)
+                    }
+                },
+                actions = {
+                    if (uiState.selectionMode) {
+                        TextButton(onClick = { viewModel.exitSelectionMode() }) { Text("취소") }
+                    }
+                }
+            )
+        },
+        bottomBar = {
+            if (uiState.selectionMode) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    TextButton(onClick = { viewModel.enableSelected() }) {
+                        Icon(Icons.Default.PowerSettingsNew, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("켜기")
+                    }
+                    TextButton(onClick = { viewModel.deleteSelected() }) {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("모두 삭제")
+                    }
+                }
             }
         }
     ) { innerPadding ->
-        if (uiState.alarms.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Alarm,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp)
+        ) {
+            if (!uiState.selectionMode) {
+                val summary = rememberRecentAlarmSummary(uiState.alarms)
+                Spacer(Modifier.height(8.dp))
+                if (summary.isOffState) {
+                    Text(
+                        text = summary.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
                     )
-                    Text("알람이 없습니다", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Text(
+                        text = summary.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = summary.time,
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = summary.dateTime,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 6.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onAddAlarm) {
+                        Icon(Icons.Default.Add, contentDescription = "알람 추가")
+                    }
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "더보기")
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = uiState.selectedIds.size == uiState.alarms.size && uiState.alarms.isNotEmpty(),
+                        onCheckedChange = { viewModel.toggleSelectAll() }
+                    )
+                    Text("전체")
                 }
             }
-        } else {
+
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(vertical = 8.dp)
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(uiState.alarms, key = { it.id }) { alarm ->
-                    AlarmItem(
+                    AlarmCard(
                         alarm = alarm,
-                        onToggle = { viewModel.toggleEnabled(alarm) },
-                        onDelete = { viewModel.deleteAlarm(alarm) },
-                        onClick = { onEditAlarm(alarm.id) }
+                        selected = alarm.id in uiState.selectedIds,
+                        selectionMode = uiState.selectionMode,
+                        onTap = {
+                            viewModel.onAlarmTap(alarm.id) { onEditAlarm(alarm.id) }
+                        },
+                        onLongPress = { viewModel.onAlarmLongPress(alarm.id) },
+                        onToggle = { viewModel.toggleEnabled(alarm) }
                     )
-                    HorizontalDivider()
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun AlarmCard(
+    alarm: Alarm,
+    selected: Boolean,
+    selectionMode: Boolean,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
+    onToggle: () -> Unit
+) {
+    val dateLabel = rememberAlarmDateLabel(alarm)
+
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onTap, onLongClick = onLongPress),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else if (alarm.isEnabled) {
+                MaterialTheme.colorScheme.surfaceContainerLow
+            } else {
+                MaterialTheme.colorScheme.surfaceContainer
+            }
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (selectionMode) {
+                Checkbox(checked = selected, onCheckedChange = { onTap() })
+                Spacer(Modifier.width(8.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                if (!alarm.label.isBlank()) {
+                    Text(
+                        text = alarm.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (alarm.isEnabled) Color.White else Color.Gray
+                    )
+                    Spacer(Modifier.height(20.dp))
+                }
+                Row(verticalAlignment = Alignment.Bottom) {
+                    val timeColor =
+                        if (alarm.isEnabled) Color.White else Color.Gray
+                    Text(
+                        text = alarm.amPm,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = timeColor,
+                        textAlign = TextAlign.End
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = alarm.twelveHourTimeString,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Light,
+                        color = timeColor
+                    )
+                }
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = dateLabel,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (alarm.isEnabled) Color.White else Color.Gray
+                )
+                if (!selectionMode) {
+                    Spacer(Modifier.width(10.dp))
+                    androidx.compose.material3.Switch(
+                        checked = alarm.isEnabled,
+                        onCheckedChange = { onToggle() }
+                    )
                 }
             }
         }
@@ -72,54 +274,126 @@ fun HomeScreen(
 }
 
 @Composable
-private fun AlarmItem(
-    alarm: Alarm,
-    onToggle: () -> Unit,
-    onDelete: () -> Unit,
-    onClick: () -> Unit
-) {
-    val weekdayLabels = alarm.repeatWeekdays().joinToString(" ") { it.label }
+private fun rememberRecentAlarmSummary(alarms: List<Alarm>): RecentAlarmSummary {
+    val now = Calendar.getInstance()
+    val nextEnabled = alarms
+        .filter { it.isEnabled }
+        .mapNotNull { alarm -> nextTriggerTimeMillis(alarm, now)?.let { alarm to it } }
+        .minByOrNull { it.second }
+        ?: return RecentAlarmSummary(
+            title = "모든 알람이 꺼진 상태입니다",
+            time = "",
+            dateTime = "",
+            isOffState = true
+        )
+    val (alarm, triggerAtMillis) = nextEnabled
+    val diffMillis = (triggerAtMillis - now.timeInMillis).coerceAtLeast(0L)
+    val diffMinute = (diffMillis / 60000L).toInt()
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            val timeColor = if (alarm.isEnabled) MaterialTheme.colorScheme.onSurface
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    text = alarm.twelveHourTimeString,
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.Thin,
-                    color = timeColor
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = alarm.amPm,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = timeColor,
-                    modifier = Modifier.padding(bottom = 6.dp)
-                )
-            }
-            Text(
-                text = alarm.label.ifBlank { "알람" },
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (alarm.label.isNotBlank()) MaterialTheme.colorScheme.onSurfaceVariant
-                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-            )
-            if (weekdayLabels.isNotBlank()) {
-                Text(
-                    weekdayLabels,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        Switch(checked = alarm.isEnabled, onCheckedChange = { onToggle() })
+    val hours = diffMinute / 60
+    val mins = diffMinute % 60
+    val remain = when {
+        diffMinute == 0 -> "곧 알람이 울립니다"
+        diffMillis >= 24 * 60 * 60 * 1000L -> "${kotlin.math.ceil(diffMillis / (24 * 60 * 60 * 1000.0)).toInt()}일 후에 알람이 울립니다"
+        hours == 0 -> "${mins}분 남음"
+        mins == 0 -> "${hours}시간 남음"
+        else -> "${hours}시간 ${mins}분 남음"
     }
+
+    val dateTime = SimpleDateFormat("M월 d일 (E) a h:mm", Locale.KOREAN).format(triggerAtMillis)
+
+    val amPm = if (alarm.hour < 12) "오전" else "오후"
+    val hour12 = if (alarm.hour % 12 == 0) 12 else alarm.hour % 12
+    return RecentAlarmSummary(
+        title = remain,
+        time = "$amPm $hour12:${"%02d".format(alarm.minute)}",
+        dateTime = dateTime,
+        isOffState = false
+    )
+}
+
+private data class RecentAlarmSummary(
+    val title: String,
+    val time: String,
+    val dateTime: String,
+    val isOffState: Boolean
+)
+
+private fun nextTriggerTimeMillis(alarm: Alarm, now: Calendar = Calendar.getInstance()): Long? {
+    fun fromBase(base: Long): Long {
+        val cal = Calendar.getInstance().apply { timeInMillis = base }
+        cal.set(Calendar.HOUR_OF_DAY, alarm.hour)
+        cal.set(Calendar.MINUTE, alarm.minute)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        while (cal.timeInMillis <= now.timeInMillis) {
+            cal.add(Calendar.DAY_OF_YEAR, 1)
+        }
+        return cal.timeInMillis
+    }
+
+    if (alarm.specificDateMillis != null) return fromBase(alarm.specificDateMillis)
+
+    val repeat = alarm.repeatWeekdays().toSet()
+    if (repeat.isNotEmpty()) {
+        val map = mapOf(
+            Weekday.SUN to Calendar.SUNDAY,
+            Weekday.MON to Calendar.MONDAY,
+            Weekday.TUE to Calendar.TUESDAY,
+            Weekday.WED to Calendar.WEDNESDAY,
+            Weekday.THU to Calendar.THURSDAY,
+            Weekday.FRI to Calendar.FRIDAY,
+            Weekday.SAT to Calendar.SATURDAY
+        )
+        return repeat.mapNotNull { weekday ->
+            val targetDow = map[weekday] ?: return@mapNotNull null
+            val cal = Calendar.getInstance().apply {
+                timeInMillis = now.timeInMillis
+                set(Calendar.DAY_OF_WEEK, targetDow)
+                set(Calendar.HOUR_OF_DAY, alarm.hour)
+                set(Calendar.MINUTE, alarm.minute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                if (timeInMillis <= now.timeInMillis) add(Calendar.WEEK_OF_YEAR, 1)
+            }
+            cal.timeInMillis
+        }.minOrNull()
+    }
+
+    val cal = Calendar.getInstance().apply {
+        timeInMillis = now.timeInMillis
+        set(Calendar.HOUR_OF_DAY, alarm.hour)
+        set(Calendar.MINUTE, alarm.minute)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+        if (timeInMillis <= now.timeInMillis) add(Calendar.DAY_OF_YEAR, 1)
+    }
+    return cal.timeInMillis
+}
+
+@Composable
+private fun rememberAlarmDateLabel(alarm: Alarm): String {
+    alarm.specificDateMillis?.let { millis ->
+        return SimpleDateFormat("M월 d일 (E)", Locale.KOREAN).format(millis)
+    }
+
+    val weekdayOrder = listOf(
+        Weekday.SUN, Weekday.MON, Weekday.TUE, Weekday.WED,
+        Weekday.THU, Weekday.FRI, Weekday.SAT
+    )
+    val repeatDays = alarm.repeatWeekdays().toSet()
+    if (repeatDays.size == 7) return "매일"
+    if (repeatDays.isNotEmpty()) {
+        return weekdayOrder.filter { it in repeatDays }.joinToString(", ") { it.label }
+    }
+
+    val now = Calendar.getInstance()
+    val cal = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, alarm.hour)
+        set(Calendar.MINUTE, alarm.minute)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+        if (timeInMillis <= now.timeInMillis) add(Calendar.DAY_OF_YEAR, 1)
+    }
+    return SimpleDateFormat("M월 d일 (E)", Locale.KOREAN).format(cal.time)
 }

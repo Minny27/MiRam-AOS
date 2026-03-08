@@ -13,10 +13,18 @@ data class Alarm(
     val repeatDays: String = "",
     val label: String = "",
     val isEnabled: Boolean = true,
-    /** 초 단위 (5~3600) */
+    /** 초 단위 (5~60) */
     val ringDuration: Int = 60,
     /** 시스템 린톤 URI 문자열. 빈 문자열 = 시스템 기본 알람 */
     val soundUri: String = "",
+    val soundEnabled: Boolean = true,
+    /** 특정 날짜(1회성) 지정 시 사용, null이면 다음 도래 시간 */
+    val specificDateMillis: Long? = null,
+    val vibrateEnabled: Boolean = true,
+    val vibrationMode: String = "Basic call",
+    val snoozeEnabled: Boolean = true,
+    val snoozeIntervalMinutes: Int = 5,
+    val snoozeRepeatCount: Int = 3,
     val createdAt: Long = System.currentTimeMillis()
 ) {
     fun repeatWeekdays(): List<Weekday> =

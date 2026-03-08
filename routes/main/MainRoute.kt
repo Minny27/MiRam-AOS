@@ -1,5 +1,6 @@
 package com.example.miram.routes.main
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,8 +35,9 @@ fun MainRoute() {
     val ringingAlarm by AlarmStateHolder.ringingAlarm.collectAsState()
     LaunchedEffect(ringingAlarm) {
         val alarm = ringingAlarm ?: return@LaunchedEffect
+        val encodedLabel = Uri.encode(alarm.label)
         navController.navigate(
-            "alarm/ringing/${alarm.alarmId}?label=${alarm.label}&ringDuration=${alarm.ringDuration}"
+            "alarm/ringing/${alarm.alarmId}?label=$encodedLabel&ringDuration=${alarm.ringDuration}"
         ) {
             launchSingleTop = true
         }
@@ -69,7 +71,7 @@ fun MainRoute() {
             )
         ) { backStackEntry ->
             val alarmId = backStackEntry.arguments?.getString("alarmId") ?: ""
-            val label = backStackEntry.arguments?.getString("label") ?: ""
+            val label = backStackEntry.arguments?.getString("label")?.let(Uri::decode) ?: ""
             val ringDuration = backStackEntry.arguments?.getInt("ringDuration") ?: 60
             AlarmRingingScreen(
                 alarmId = alarmId,

@@ -20,8 +20,11 @@ class AlarmScheduler @Inject constructor(
     fun schedule(alarm: Alarm) {
         cancel(alarm)
         if (!alarm.isEnabled) return
-        if (alarm.isOneTime) scheduleOnce(alarm)
-        else alarm.repeatWeekdays().forEach { scheduleRepeating(alarm, it) }
+        when {
+            alarm.specificDateMillis != null -> scheduleOnce(alarm)
+            alarm.repeatWeekdays().isNotEmpty() -> alarm.repeatWeekdays().forEach { scheduleRepeating(alarm, it) }
+            else -> scheduleOnce(alarm)
+        }
     }
 
     fun cancel(alarm: Alarm) {
@@ -32,7 +35,18 @@ class AlarmScheduler @Inject constructor(
     }
 
     private fun scheduleOnce(alarm: Alarm) {
-        val triggerAt = nextAlarmTimeMillis(alarm.hour, alarm.minute, null)
+        val triggerAt = alarm.specificDateMillis?.let { specified ->
+            Calendar.getInstance().apply {
+                timeInMillis = specified
+                set(Calendar.HOUR_OF_DAY, alarm.hour)
+                set(Calendar.MINUTE, alarm.minute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                while (timeInMillis <= System.currentTimeMillis()) {
+                    add(Calendar.DAY_OF_YEAR, 1)
+                }
+            }.timeInMillis
+        } ?: nextAlarmTimeMillis(alarm.hour, alarm.minute, null)
         val pi = buildPendingIntent(alarm, oneTimeRequestCode(alarm)) ?: return
         alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, pi), pi)
     }
@@ -47,8 +61,16 @@ class AlarmScheduler @Inject constructor(
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarm.id)
             putExtra(AlarmReceiver.EXTRA_ALARM_LABEL, alarm.label)
+            putExtra(AlarmReceiver.EXTRA_ALARM_HOUR, alarm.hour)
+            putExtra(AlarmReceiver.EXTRA_ALARM_MINUTE, alarm.minute)
             putExtra(AlarmReceiver.EXTRA_RING_DURATION, alarm.ringDuration)
             putExtra(AlarmReceiver.EXTRA_SOUND_URI, alarm.soundUri)
+            putExtra(AlarmReceiver.EXTRA_SOUND_ENABLED, alarm.soundEnabled)
+            putExtra(AlarmReceiver.EXTRA_VIBRATE_ENABLED, alarm.vibrateEnabled)
+            putExtra(AlarmReceiver.EXTRA_VIBRATION_MODE, alarm.vibrationMode)
+            putExtra(AlarmReceiver.EXTRA_SNOOZE_ENABLED, alarm.snoozeEnabled)
+            putExtra(AlarmReceiver.EXTRA_SNOOZE_INTERVAL_MIN, alarm.snoozeIntervalMinutes)
+            putExtra(AlarmReceiver.EXTRA_SNOOZE_REPEAT_COUNT, alarm.snoozeRepeatCount)
         }
         return PendingIntent.getBroadcast(
             context, requestCode, intent,
@@ -74,6 +96,42 @@ class AlarmScheduler @Inject constructor(
 
     private fun oneTimeRequestCode(alarm: Alarm) = alarm.id.hashCode()
     private fun repeatingRequestCode(alarm: Alarm, weekday: Weekday) = (alarm.id + weekday.value).hashCode()
+
+    fun scheduleSnooze(
+        alarmId: String,
+        label: String,
+        hour: Int,
+        minute: Int,
+        ringDuration: Int,
+        soundUri: String,
+        soundEnabled: Boolean,
+        vibrateEnabled: Boolean,
+        vibrationMode: String,
+        snoozeEnabled: Boolean,
+        snoozeIntervalMinutes: Int
+    ) {
+        val triggerAt = System.currentTimeMillis() + snoozeIntervalMinutes * 60 * 1000L
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
+            putExtra(AlarmReceiver.EXTRA_ALARM_LABEL, label)
+            putExtra(AlarmReceiver.EXTRA_ALARM_HOUR, hour)
+            putExtra(AlarmReceiver.EXTRA_ALARM_MINUTE, minute)
+            putExtra(AlarmReceiver.EXTRA_RING_DURATION, ringDuration)
+            putExtra(AlarmReceiver.EXTRA_SOUND_URI, soundUri)
+            putExtra(AlarmReceiver.EXTRA_SOUND_ENABLED, soundEnabled)
+            putExtra(AlarmReceiver.EXTRA_VIBRATE_ENABLED, vibrateEnabled)
+            putExtra(AlarmReceiver.EXTRA_VIBRATION_MODE, vibrationMode)
+            putExtra(AlarmReceiver.EXTRA_SNOOZE_ENABLED, snoozeEnabled)
+            putExtra(AlarmReceiver.EXTRA_SNOOZE_INTERVAL_MIN, snoozeIntervalMinutes)
+        }
+        val pi = PendingIntent.getBroadcast(
+            context,
+            (alarmId + "_snooze").hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, pi), pi)
+    }
 }
 
 private fun Weekday.calendarDayOfWeek(): Int = when (this) {

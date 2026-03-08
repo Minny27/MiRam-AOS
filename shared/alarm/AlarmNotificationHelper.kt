@@ -7,7 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
-import com.example.miram.MainActivity
+import com.example.MainActivity
 
 object AlarmNotificationHelper {
     const val CHANNEL_ID = "alarm_channel"
@@ -27,7 +27,21 @@ object AlarmNotificationHelper {
         manager.createNotificationChannel(channel)
     }
 
-    fun buildAlarmNotification(context: Context, label: String, alarmId: String): Notification {
+    fun buildAlarmNotification(
+        context: Context,
+        label: String,
+        alarmId: String,
+        timeText: String,
+        hour: Int,
+        minute: Int,
+        ringDuration: Int,
+        soundUri: String,
+        soundEnabled: Boolean,
+        vibrateEnabled: Boolean,
+        snoozeIntervalMinutes: Int,
+        snoozeRepeatCount: Int,
+        snoozeEnabled: Boolean
+    ): Notification {
         val fullScreenIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
@@ -45,17 +59,38 @@ object AlarmNotificationHelper {
             context, 0, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val snoozeIntent = Intent(context, AlarmForegroundService::class.java).apply {
+            action = AlarmForegroundService.ACTION_SNOOZE
+            putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
+            putExtra(AlarmReceiver.EXTRA_ALARM_LABEL, label)
+            putExtra(AlarmReceiver.EXTRA_ALARM_HOUR, hour)
+            putExtra(AlarmReceiver.EXTRA_ALARM_MINUTE, minute)
+            putExtra(AlarmReceiver.EXTRA_RING_DURATION, ringDuration)
+            putExtra(AlarmReceiver.EXTRA_SOUND_URI, soundUri)
+            putExtra(AlarmReceiver.EXTRA_SOUND_ENABLED, soundEnabled)
+            putExtra(AlarmReceiver.EXTRA_VIBRATE_ENABLED, vibrateEnabled)
+            putExtra(AlarmReceiver.EXTRA_SNOOZE_ENABLED, snoozeEnabled)
+            putExtra(AlarmReceiver.EXTRA_SNOOZE_INTERVAL_MIN, snoozeIntervalMinutes)
+            putExtra(AlarmReceiver.EXTRA_SNOOZE_REPEAT_COUNT, snoozeRepeatCount)
+        }
+        val snoozePi = PendingIntent.getService(
+            context, 1, snoozeIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
-        return NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle(label.ifBlank { "알람" })
-            .setContentText("알람이 울리고 있습니다")
+            .setContentText(timeText)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setFullScreenIntent(fullScreenPi, true)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "해제", stopPi)
             .setOngoing(true)
             .setAutoCancel(false)
-            .build()
+        if (snoozeEnabled) {
+            builder.addAction(android.R.drawable.ic_popup_reminder, "다시 울림", snoozePi)
+        }
+        return builder.build()
     }
 }

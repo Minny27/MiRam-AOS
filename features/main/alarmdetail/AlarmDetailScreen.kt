@@ -1,6 +1,7 @@
 package com.example.miram.features.main.alarmdetail
 
 import android.app.Activity
+import android.app.AlertDialog as PlatformAlertDialog
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.media.RingtoneManager
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,27 +32,29 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,11 +63,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -87,6 +94,8 @@ fun AlarmDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     var showDiscardDialog by remember { mutableStateOf(false) }
+    val latestOnBack by rememberUpdatedState(onBack)
+    val latestSave by rememberUpdatedState(viewModel::save)
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) onBack()
@@ -110,7 +119,10 @@ fun AlarmDetailScreen(
         if (result.resultCode == Activity.RESULT_OK) {
             val uri = result.data?.let { data ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+                    data.getParcelableExtra(
+                        RingtoneManager.EXTRA_RINGTONE_PICKED_URI,
+                        Uri::class.java
+                    )
                 } else {
                     @Suppress("DEPRECATION")
                     data.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
@@ -124,31 +136,48 @@ fun AlarmDetailScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(if (viewModel.isEditMode) "알람 수정" else "알람 추가") },
-                navigationIcon = {
-                    IconButton(onClick = requestBackNavigation) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로")
-                    }
-                },
-                actions = {
-                    if (viewModel.isEditMode) {
-                        IconButton(onClick = { viewModel.deleteAlarm() }) {
-                            Icon(Icons.Default.Delete, contentDescription = "알람 삭제")
-                        }
-                    }
-                    TextButton(onClick = { viewModel.save() }) {
-                        Text("저장", fontWeight = FontWeight.Bold)
-                    }
+        containerColor = Color(0xFFF5F5F5),
+        bottomBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .background(Color(0xFFF5F5F5)),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    onClick = requestBackNavigation,
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(Color.Transparent)
+                ) {
+                    Text(
+                        "취소", fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        modifier = Modifier.background(Color.Transparent)
+                    )
                 }
-            )
-        }
+                Button(
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    onClick = { viewModel.save() },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        "저장", fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        modifier = Modifier.background(Color.Transparent)
+                    )
+                }
+            }
+        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .background(Color(0xFFF5F5F5))
         ) {
             Spacer(Modifier.height(8.dp))
             TimePickerSection(
@@ -165,7 +194,7 @@ fun AlarmDetailScreen(
                     .fillMaxWidth()
                     .weight(1f),
                 colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    containerColor = Color.White
                 )
             ) {
                 Column(
@@ -199,7 +228,10 @@ fun AlarmDetailScreen(
                                 ?.let { Uri.parse(it) }
                                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                             val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-                                putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                                putExtra(
+                                    RingtoneManager.EXTRA_RINGTONE_TYPE,
+                                    RingtoneManager.TYPE_ALARM
+                                )
                                 putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "알람 소리 선택")
                                 putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
                                 putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
@@ -226,7 +258,10 @@ fun AlarmDetailScreen(
                     )
 
                     Text("울림 시간", style = MaterialTheme.typography.labelLarge)
-                    RingDurationSelector(selected = uiState.ringDuration, onSelect = viewModel::onRingDurationChange)
+                    RingDurationSelector(
+                        selected = uiState.ringDuration,
+                        onSelect = viewModel::onRingDurationChange
+                    )
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -234,32 +269,24 @@ fun AlarmDetailScreen(
     }
 
     if (showDiscardDialog) {
-        AlertDialog(
-            onDismissRequest = { showDiscardDialog = false },
-            title = { Text("변경 사항을 저장할까요?") },
-            text = { Text("저장하지 않으면 수정한 내용이 사라집니다.") },
-            dismissButton = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { showDiscardDialog = false }) {
-                        Text("취소")
-                    }
-                    TextButton(onClick = {
-                        showDiscardDialog = false
-                        onBack()
-                    }) {
-                        Text("저장 안 함")
-                    }
+        DisposableEffect(context) {
+            val dialog = PlatformAlertDialog.Builder(context)
+                .setTitle("변경사항을 저장할까요?")
+                .setNegativeButton("취소", null)
+                .setNeutralButton("저장 안 함") { _, _ ->
+                    latestOnBack()
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDiscardDialog = false
-                    viewModel.save()
-                }) {
-                    Text("저장", fontWeight = FontWeight.Bold)
+                .setPositiveButton("저장") { _, _ ->
+                    latestSave()
                 }
+                .create()
+            dialog.setOnDismissListener { showDiscardDialog = false }
+            dialog.show()
+            onDispose {
+                dialog.setOnDismissListener(null)
+                dialog.dismiss()
             }
-        )
+        }
     }
 }
 
@@ -274,7 +301,15 @@ private fun RepeatSection(
     val today = Calendar.getInstance()
     val tomorrow = (today.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, 1) }
     val formatter = remember { SimpleDateFormat("M월 d일 (E)", Locale.KOREAN) }
-    val weekdayOrder = listOf(Weekday.SUN, Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI, Weekday.SAT)
+    val weekdayOrder = listOf(
+        Weekday.SUN,
+        Weekday.MON,
+        Weekday.TUE,
+        Weekday.WED,
+        Weekday.THU,
+        Weekday.FRI,
+        Weekday.SAT
+    )
 
     val title = when {
         selectedDateMillis != null -> {
@@ -285,11 +320,13 @@ private fun RepeatSection(
                 else -> formatter.format(selected.time)
             }
         }
+
         selectedDays.size == 7 -> "매일"
         selectedDays.isNotEmpty() -> {
             val labels = weekdayOrder.filter { it in selectedDays }.joinToString(", ") { it.label }
             "매주 $labels"
         }
+
         else -> "내일-${formatter.format(tomorrow.time)}"
     }
 
@@ -321,7 +358,10 @@ private fun RepeatSection(
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             weekdayOrder.forEach { weekday ->
                 FilterChip(
                     selected = weekday in selectedDays,
@@ -334,14 +374,21 @@ private fun RepeatSection(
 }
 
 @Composable
-private fun TimePickerSection(hour: Int, minute: Int, onHourChange: (Int) -> Unit, onMinuteChange: (Int) -> Unit) {
+private fun TimePickerSection(
+    hour: Int,
+    minute: Int,
+    onHourChange: (Int) -> Unit,
+    onMinuteChange: (Int) -> Unit
+) {
     val isPm = hour >= 12
     val hour12 = if (hour % 12 == 0) 12 else hour % 12
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF5F5F5)),
         horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         AmPmPicker(
             isPm = isPm,
@@ -355,7 +402,12 @@ private fun TimePickerSection(hour: Int, minute: Int, onHourChange: (Int) -> Uni
         ) { index ->
             onHourChange(to24Hour(isPm, index + 1))
         }
-        Text(":", fontSize = 42.sp, fontWeight = FontWeight.Light, modifier = Modifier.padding(horizontal = 6.dp))
+        Text(
+            ":",
+            fontSize = 42.sp,
+            fontWeight = FontWeight.Light,
+            modifier = Modifier.padding(horizontal = 6.dp)
+        )
         Wheel3Picker(
             values = (0..59).map { "%02d".format(it) },
             selectedIndex = minute,
@@ -396,7 +448,7 @@ private fun WheelPicker(
 ) {
     if (values.isEmpty()) return
     val safeIndex = selectedIndex.coerceIn(0, values.lastIndex)
-    val itemHeight = 52.dp
+    val itemHeight = 104.dp
     val isLooping = values.size > 2
     val repeatedCycles = if (isLooping) 100 else 1
     val totalItems = values.size * repeatedCycles
@@ -460,13 +512,15 @@ private fun WheelPicker(
     }
 
     ElevatedCard(
-        modifier = Modifier.width(width),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        modifier = Modifier
+            .width(width)
+            .background(Color(0xFFF5F5F5))
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(156.dp)
+                .height(312.dp)
+                .background(Color(0xFFF5F5F5))
                 .clip(MaterialTheme.shapes.large)
         ) {
             Box(
@@ -510,7 +564,7 @@ private fun WheelPicker(
                             color = when {
                                 isSelected -> MaterialTheme.colorScheme.onSurface
                                 distance == 1 -> MaterialTheme.colorScheme.onSurfaceVariant
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                                else -> Color.LightGray.copy(alpha = 0.55f)
                             }
                         )
                     }
@@ -529,7 +583,10 @@ private fun SoundSettingRow(
 ) {
     OutlinedCard(onClick = onPickRingtone, modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier =
+                Modifier
+                    .background(Color.White)
+                    .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -542,7 +599,7 @@ private fun SoundSettingRow(
                     color = if (enabled) {
                         MaterialTheme.colorScheme.onSurface
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        Color.Blue
                     }
                 )
             }
@@ -561,7 +618,9 @@ private fun VibrationSettingRow(
     var openDialog by remember { mutableStateOf(false) }
     OutlinedCard(onClick = { openDialog = true }, modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .background(Color.White)
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -573,7 +632,7 @@ private fun VibrationSettingRow(
                     color = if (enabled) {
                         MaterialTheme.colorScheme.onSurface
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        Color(0xFFF5F5F5)
                     }
                 )
             }
@@ -626,7 +685,9 @@ private fun SnoozeSettingRow(
     var openDialog by remember { mutableStateOf(false) }
     OutlinedCard(onClick = { openDialog = true }, modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .background(Color.White)
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -638,7 +699,7 @@ private fun SnoozeSettingRow(
                     color = if (enabled) {
                         MaterialTheme.colorScheme.onSurface
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        Color.Blue
                     }
                 )
             }
@@ -666,7 +727,7 @@ private fun SnoozeSettingRow(
                                     labelColor = if (enabled && intervalMinutes == m) {
                                         MaterialTheme.colorScheme.onPrimaryContainer
                                     } else {
-                                        MaterialTheme.colorScheme.onSurface
+                                        Color.Blue
                                     }
                                 )
                             )
@@ -687,7 +748,7 @@ private fun SnoozeSettingRow(
                                     labelColor = if (enabled && repeatCount == c) {
                                         MaterialTheme.colorScheme.onPrimaryContainer
                                     } else {
-                                        MaterialTheme.colorScheme.onSurface
+                                        Color.Blue
                                     }
                                 )
                             )
@@ -707,26 +768,30 @@ private fun to24Hour(isPm: Boolean, hour12: Int): Int {
 
 private fun isSameDate(a: Calendar, b: Calendar): Boolean =
     a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
-        a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
+            a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
 
 @Composable
 private fun RingDurationSelector(selected: Int, onSelect: (Int) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.large)
+            .background(Color.White, MaterialTheme.shapes.large)
             .horizontalScroll(rememberScrollState())
             .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         RingDuration.allValues.forEach { seconds ->
-            AssistChip(
+            FilterChip(
+                selected = seconds == selected,
                 onClick = { onSelect(seconds) },
                 label = { Text(RingDuration.label(seconds)) },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = if (seconds == selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                    labelColor = if (seconds == selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                )
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = Color.White,
+                    labelColor = MaterialTheme.colorScheme.onSurface
+                ),
+//                border = if (seconds == selected) null else FilterChipDefaults.filterChipBorder(enabled = true)
             )
         }
     }

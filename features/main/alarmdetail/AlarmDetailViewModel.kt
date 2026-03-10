@@ -25,7 +25,7 @@ data class AlarmDetailUiState(
     val minute: Int = 0,
     val label: String = "",
     val selectedDays: Set<Weekday> = emptySet(),
-    val ringDuration: Int = 60,
+    val ringDuration: Int = 10,
     val soundUri: String = "",
     val soundTitle: String = "기본 알람",
     val soundEnabled: Boolean = true,
@@ -153,6 +153,20 @@ class AlarmDetailViewModel @Inject constructor(
     fun save() {
         viewModelScope.launch {
             val s = _uiState.value
+            val (normalizedDateMillis, wasAdjustedToTomorrow) = normalizeSpecificDateMillis(
+                selectedDateMillis = s.selectedDateMillis,
+                hour = s.hour,
+                minute = s.minute
+            )
+            if (wasAdjustedToTomorrow) {
+                updateState { copy(selectedDateMillis = normalizedDateMillis) }
+                Toast.makeText(
+                    context,
+                    "이미 지난 날짜는 선택할 수 없어요. 알람이 내일 울리도록 설정했어요",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@launch
+            }
             val weekdayOrder = listOf(
                 Weekday.SUN,
                 Weekday.MON,
@@ -161,11 +175,6 @@ class AlarmDetailViewModel @Inject constructor(
                 Weekday.THU,
                 Weekday.FRI,
                 Weekday.SAT
-            )
-            val (normalizedDateMillis, wasAdjustedToTomorrow) = normalizeSpecificDateMillis(
-                selectedDateMillis = s.selectedDateMillis,
-                hour = s.hour,
-                minute = s.minute
             )
             val alarm = Alarm(
                 id = alarmId ?: java.util.UUID.randomUUID().toString(),
@@ -188,13 +197,6 @@ class AlarmDetailViewModel @Inject constructor(
             )
             if (alarmId == null) repository.addAlarm(alarm)
             else repository.updateAlarm(alarm)
-            if (wasAdjustedToTomorrow) {
-                Toast.makeText(
-                    context,
-                    "이미 지난 날짜는 선택할 수 없어요. 알람이 내일 울리도록 설정했어요",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
             initialDraft = _uiState.value.toDraft()
             _uiState.value = _uiState.value.copy(
                 hasUnsavedChanges = false,

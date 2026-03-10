@@ -6,8 +6,44 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
+
+val AccentColor = Color(0xFFFF0A54)
+val AccentSurfaceColor = Color(0xFFFFB0C8)
+
+private val LightColors = lightColorScheme(
+    primary = AccentColor,
+    onPrimary = Color.White,
+    primaryContainer = AccentColor,
+    onPrimaryContainer = Color.White,
+    secondary = AccentColor,
+    onSecondary = Color.White,
+    secondaryContainer = AccentColor,
+    onSecondaryContainer = Color.White,
+    tertiary = AccentColor,
+    onTertiary = Color.White,
+    tertiaryContainer = AccentColor,
+    onTertiaryContainer = Color.White,
+    surfaceTint = AccentColor
+)
+
+private val DarkColors = darkColorScheme(
+    primary = AccentColor,
+    onPrimary = Color.White,
+    primaryContainer = AccentColor,
+    onPrimaryContainer = Color.White,
+    secondary = AccentColor,
+    onSecondary = Color.White,
+    secondaryContainer = AccentColor,
+    onSecondaryContainer = Color.White,
+    tertiary = AccentColor,
+    onTertiary = Color.White,
+    tertiaryContainer = AccentColor,
+    onTertiaryContainer = Color.White,
+    surfaceTint = AccentColor
+)
 
 private val AppTypography = Typography().run {
     Typography(
@@ -32,9 +68,9 @@ private val AppTypography = Typography().run {
 @Composable
 fun MiRamTheme(content: @Composable () -> Unit) {
     val scheme = if (isSystemInDarkTheme()) {
-        darkColorScheme()
+        DarkColors
     } else {
-        lightColorScheme()
+        LightColors
     }
     MaterialTheme(
         colorScheme = scheme,

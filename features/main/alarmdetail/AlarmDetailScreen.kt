@@ -3,15 +3,18 @@ package com.example.miram.features.main.alarmdetail
 import android.app.Activity
 import android.app.DatePickerDialog
 import android.content.Intent
-import android.graphics.drawable.ColorDrawable
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
-import android.widget.NumberPicker
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +24,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -48,24 +54,29 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.miram.shared.model.RingDuration
 import com.example.miram.shared.model.Weekday
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlin.math.abs
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,9 +86,22 @@ fun AlarmDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
+    var showDiscardDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) onBack()
+    }
+
+    val requestBackNavigation = {
+        if (uiState.hasUnsavedChanges) {
+            showDiscardDialog = true
+        } else {
+            onBack()
+        }
+    }
+
+    BackHandler(enabled = uiState.hasUnsavedChanges && !uiState.isSaved) {
+        showDiscardDialog = true
     }
 
     val ringtoneLauncher = rememberLauncherForActivityResult(
@@ -104,7 +128,7 @@ fun AlarmDetailScreen(
             TopAppBar(
                 title = { Text(if (viewModel.isEditMode) "알람 수정" else "알람 추가") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = requestBackNavigation) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로")
                     }
                 },
@@ -208,6 +232,35 @@ fun AlarmDetailScreen(
             Spacer(Modifier.height(10.dp))
         }
     }
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = { Text("변경 사항을 저장할까요?") },
+            text = { Text("저장하지 않으면 수정한 내용이 사라집니다.") },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { showDiscardDialog = false }) {
+                        Text("취소")
+                    }
+                    TextButton(onClick = {
+                        showDiscardDialog = false
+                        onBack()
+                    }) {
+                        Text("저장 안 함")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDiscardDialog = false
+                    viewModel.save()
+                }) {
+                    Text("저장", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -302,7 +355,7 @@ private fun TimePickerSection(hour: Int, minute: Int, onHourChange: (Int) -> Uni
         ) { index ->
             onHourChange(to24Hour(isPm, index + 1))
         }
-        Text(":", fontSize = 38.sp, fontWeight = FontWeight.Light, modifier = Modifier.padding(horizontal = 6.dp))
+        Text(":", fontSize = 42.sp, fontWeight = FontWeight.Light, modifier = Modifier.padding(horizontal = 6.dp))
         Wheel3Picker(
             values = (0..59).map { "%02d".format(it) },
             selectedIndex = minute,
@@ -327,7 +380,7 @@ private fun AmPmPicker(isPm: Boolean, onChange: (Boolean) -> Unit) {
 private fun Wheel3Picker(
     values: List<String>,
     selectedIndex: Int,
-    width: androidx.compose.ui.unit.Dp,
+    width: Dp,
     onSelect: (Int) -> Unit
 ) {
     if (values.isEmpty()) return
@@ -338,54 +391,132 @@ private fun Wheel3Picker(
 private fun WheelPicker(
     values: List<String>,
     selectedIndex: Int,
-    width: androidx.compose.ui.unit.Dp,
+    width: Dp,
     onSelect: (Int) -> Unit
 ) {
     if (values.isEmpty()) return
     val safeIndex = selectedIndex.coerceIn(0, values.lastIndex)
+    val itemHeight = 52.dp
+    val isLooping = values.size > 2
+    val repeatedCycles = if (isLooping) 100 else 1
+    val totalItems = values.size * repeatedCycles
+    val scope = rememberCoroutineScope()
+
+    fun actualIndex(listIndex: Int): Int =
+        ((listIndex % values.size) + values.size) % values.size
+
+    fun targetListIndex(actual: Int, around: Int? = null): Int {
+        if (!isLooping) return actual
+        if (around == null) {
+            return values.size * (repeatedCycles / 2) + actual
+        }
+        val cycle = around / values.size
+        return listOf(cycle - 1, cycle, cycle + 1)
+            .map { it * values.size + actual }
+            .filter { it in 0 until totalItems }
+            .minByOrNull { abs(it - around) }
+            ?: (values.size * (repeatedCycles / 2) + actual)
+    }
+
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = targetListIndex(safeIndex)
+    )
+    val flingBehavior = rememberSnapFlingBehavior(listState)
+    val selectedListIndex by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
+            layoutInfo.visibleItemsInfo
+                .minByOrNull { item ->
+                    abs((item.offset + item.size / 2) - viewportCenter)
+                }
+                ?.index
+                ?.coerceIn(0, totalItems - 1)
+                ?: targetListIndex(safeIndex)
+        }
+    }
+
+    LaunchedEffect(safeIndex, totalItems) {
+        val currentActual = actualIndex(selectedListIndex)
+        if (!listState.isScrollInProgress && currentActual != safeIndex) {
+            listState.scrollToItem(targetListIndex(safeIndex, selectedListIndex))
+        }
+    }
+
+    LaunchedEffect(listState, totalItems, safeIndex) {
+        snapshotFlow {
+            listState.isScrollInProgress to selectedListIndex
+        }.collect { (isScrolling, currentSelectedIndex) ->
+            if (isScrolling) return@collect
+            val actual = actualIndex(currentSelectedIndex)
+            onSelect(actual)
+            if (isLooping) {
+                val recenteredIndex = targetListIndex(actual, currentSelectedIndex)
+                if (abs(recenteredIndex - currentSelectedIndex) > values.size * 10) {
+                    listState.scrollToItem(recenteredIndex)
+                }
+            }
+        }
+    }
+
     ElevatedCard(
         modifier = Modifier.width(width),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
-        AndroidView(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(156.dp),
-            factory = { context ->
-                NumberPicker(context).apply {
-                    minValue = 0
-                    maxValue = values.lastIndex
-                    displayedValues = values.toTypedArray()
-                    wrapSelectorWheel = values.size > 2
-                    descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
-                    value = safeIndex
-                    removeNumberPickerDivider(this)
-                    setOnValueChangedListener { _, _, newVal -> onSelect(newVal) }
-                }
-            },
-            update = { picker ->
-                if (picker.maxValue != values.lastIndex) {
-                    picker.displayedValues = null
-                    picker.minValue = 0
-                    picker.maxValue = values.lastIndex
-                    picker.displayedValues = values.toTypedArray()
-                }
-                picker.wrapSelectorWheel = values.size > 2
-                if (picker.value != safeIndex) {
-                    picker.value = safeIndex
-                }
-                removeNumberPickerDivider(picker)
-                picker.setOnValueChangedListener { _, _, newVal -> onSelect(newVal) }
-            }
-        )
-    }
-}
+                .height(156.dp)
+                .clip(MaterialTheme.shapes.large)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 4.dp)
+                    .fillMaxWidth()
+                    .height(itemHeight)
+                    .background(
+                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                        MaterialTheme.shapes.medium
+                    )
+            )
 
-private fun removeNumberPickerDivider(picker: NumberPicker) {
-    runCatching {
-        val field = NumberPicker::class.java.getDeclaredField("mSelectionDivider")
-        field.isAccessible = true
-        field.set(picker, ColorDrawable(android.graphics.Color.TRANSPARENT))
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                flingBehavior = flingBehavior,
+                contentPadding = PaddingValues(vertical = itemHeight),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                items(totalItems, key = { index -> index }) { listIndex ->
+                    val actual = actualIndex(listIndex)
+                    val isSelected = listIndex == selectedListIndex
+                    val distance = abs(listIndex - selectedListIndex)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(itemHeight)
+                            .clickable {
+                                scope.launch {
+                                    listState.animateScrollToItem(listIndex)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = values[actual],
+                            fontSize = if (isSelected) 28.sp else 22.sp,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            color = when {
+                                isSelected -> MaterialTheme.colorScheme.onSurface
+                                distance == 1 -> MaterialTheme.colorScheme.onSurfaceVariant
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -408,7 +539,11 @@ private fun SoundSettingRow(
                 Text(
                     if (enabled) soundTitle else "사용 안 함",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (enabled) Color.White else Color.Gray
+                    color = if (enabled) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
             Switch(checked = enabled, onCheckedChange = onToggle)
@@ -435,7 +570,11 @@ private fun VibrationSettingRow(
                 Text(
                     if (enabled) mode else "사용 안 함",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (enabled) Color.White else Color.Gray
+                    color = if (enabled) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
             Switch(checked = enabled, onCheckedChange = onToggle)
@@ -496,7 +635,11 @@ private fun SnoozeSettingRow(
                 Text(
                     if (enabled) "${intervalMinutes}분, ${repeatCount}회" else "사용 안 함",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (enabled) Color.White else Color.Gray
+                    color = if (enabled) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
             Switch(checked = enabled, onCheckedChange = onToggle)

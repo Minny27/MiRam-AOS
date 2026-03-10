@@ -38,6 +38,7 @@ object AlarmNotificationHelper {
         soundUri: String,
         soundEnabled: Boolean,
         vibrateEnabled: Boolean,
+        vibrationMode: String,
         snoozeIntervalMinutes: Int,
         snoozeRepeatCount: Int,
         snoozeEnabled: Boolean
@@ -54,9 +55,10 @@ object AlarmNotificationHelper {
 
         val stopIntent = Intent(context, AlarmForegroundService::class.java).apply {
             action = AlarmForegroundService.ACTION_STOP
+            putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
         }
         val stopPi = PendingIntent.getService(
-            context, 0, stopIntent,
+            context, ("$alarmId-stop").hashCode(), stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val snoozeIntent = Intent(context, AlarmForegroundService::class.java).apply {
@@ -69,12 +71,13 @@ object AlarmNotificationHelper {
             putExtra(AlarmReceiver.EXTRA_SOUND_URI, soundUri)
             putExtra(AlarmReceiver.EXTRA_SOUND_ENABLED, soundEnabled)
             putExtra(AlarmReceiver.EXTRA_VIBRATE_ENABLED, vibrateEnabled)
+            putExtra(AlarmReceiver.EXTRA_VIBRATION_MODE, vibrationMode)
             putExtra(AlarmReceiver.EXTRA_SNOOZE_ENABLED, snoozeEnabled)
             putExtra(AlarmReceiver.EXTRA_SNOOZE_INTERVAL_MIN, snoozeIntervalMinutes)
             putExtra(AlarmReceiver.EXTRA_SNOOZE_REPEAT_COUNT, snoozeRepeatCount)
         }
         val snoozePi = PendingIntent.getService(
-            context, 1, snoozeIntent,
+            context, ("$alarmId-snooze").hashCode(), snoozeIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -88,7 +91,7 @@ object AlarmNotificationHelper {
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "해제", stopPi)
             .setOngoing(true)
             .setAutoCancel(false)
-        if (snoozeEnabled) {
+        if (snoozeEnabled && snoozeRepeatCount > 0) {
             builder.addAction(android.R.drawable.ic_popup_reminder, "다시 울림", snoozePi)
         }
         return builder.build()

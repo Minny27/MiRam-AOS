@@ -21,6 +21,20 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class AlarmForegroundService : Service() {
+    private data class ActiveAlarm(
+        val alarmId: String,
+        val label: String,
+        val hour: Int,
+        val minute: Int,
+        val ringDuration: Int,
+        val soundUri: String,
+        val soundEnabled: Boolean,
+        val vibrateEnabled: Boolean,
+        val vibrationMode: String,
+        val snoozeEnabled: Boolean,
+        val snoozeIntervalMinutes: Int,
+        val snoozeRepeatCount: Int
+    )
 
     @Inject lateinit var scheduler: AlarmScheduler
 
@@ -29,6 +43,7 @@ class AlarmForegroundService : Service() {
     private var stopRunnable: Runnable? = null
     private var audioFocusRequest: AudioFocusRequest? = null
     private var vibrator: Vibrator? = null
+    private var activeAlarm: ActiveAlarm? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -38,69 +53,65 @@ class AlarmForegroundService : Service() {
             return START_NOT_STICKY
         }
         if (intent?.action == ACTION_SNOOZE) {
-            scheduleSnooze(intent)
+            intent.toActiveAlarm()?.let(::scheduleSnooze)
             stopAlarm()
             return START_NOT_STICKY
         }
 
-        val alarmId = intent?.getStringExtra(AlarmReceiver.EXTRA_ALARM_ID) ?: ""
-        val label = intent?.getStringExtra(AlarmReceiver.EXTRA_ALARM_LABEL) ?: ""
-        val hour = intent?.getIntExtra(AlarmReceiver.EXTRA_ALARM_HOUR, 0) ?: 0
-        val minute = intent?.getIntExtra(AlarmReceiver.EXTRA_ALARM_MINUTE, 0) ?: 0
-        val ringDuration = intent?.getIntExtra(AlarmReceiver.EXTRA_RING_DURATION, 60) ?: 60
-        val soundUri = intent?.getStringExtra(AlarmReceiver.EXTRA_SOUND_URI) ?: ""
-        val soundEnabled = intent?.getBooleanExtra(AlarmReceiver.EXTRA_SOUND_ENABLED, true) ?: true
-        val vibrateEnabled = intent?.getBooleanExtra(AlarmReceiver.EXTRA_VIBRATE_ENABLED, true) ?: true
-        val vibrationMode = intent?.getStringExtra(AlarmReceiver.EXTRA_VIBRATION_MODE) ?: "Basic call"
-        val snoozeEnabled = intent?.getBooleanExtra(AlarmReceiver.EXTRA_SNOOZE_ENABLED, true) ?: true
-        val snoozeInterval = intent?.getIntExtra(AlarmReceiver.EXTRA_SNOOZE_INTERVAL_MIN, 5) ?: 5
-        val snoozeRepeatCount = intent?.getIntExtra(AlarmReceiver.EXTRA_SNOOZE_REPEAT_COUNT, 3) ?: 3
+        val currentAlarm = intent?.toActiveAlarm() ?: return START_NOT_STICKY
+        activeAlarm = currentAlarm
 
         // UI에 알람 발화 상태 전달 (포그라운드·백그라운드 모두 처리)
-        AlarmStateHolder.startRinging(alarmId, label, ringDuration)
+        AlarmStateHolder.startRinging(currentAlarm.alarmId, currentAlarm.label, currentAlarm.ringDuration)
 
-        val timeText = String.format("%02d:%02d", hour, minute)
+        val timeText = String.format("%02d:%02d", currentAlarm.hour, currentAlarm.minute)
         val notification = AlarmNotificationHelper.buildAlarmNotification(
             context = this,
-            label = label,
-            alarmId = alarmId,
+            label = currentAlarm.label,
+            alarmId = currentAlarm.alarmId,
             timeText = timeText,
-            hour = hour,
-            minute = minute,
-            ringDuration = ringDuration,
-            soundUri = soundUri,
-            soundEnabled = soundEnabled,
-            vibrateEnabled = vibrateEnabled,
-            snoozeEnabled = snoozeEnabled,
-            snoozeIntervalMinutes = snoozeInterval,
-            snoozeRepeatCount = snoozeRepeatCount
+            hour = currentAlarm.hour,
+            minute = currentAlarm.minute,
+            ringDuration = currentAlarm.ringDuration,
+            soundUri = currentAlarm.soundUri,
+            soundEnabled = currentAlarm.soundEnabled,
+            vibrateEnabled = currentAlarm.vibrateEnabled,
+            vibrationMode = currentAlarm.vibrationMode,
+            snoozeEnabled = currentAlarm.snoozeEnabled,
+            snoozeIntervalMinutes = currentAlarm.snoozeIntervalMinutes,
+            snoozeRepeatCount = currentAlarm.snoozeRepeatCount
         )
         startForeground(AlarmNotificationHelper.NOTIFICATION_ID, notification)
 
         requestAudioFocus()
-        if (soundEnabled) startMediaPlayer(soundUri)
-        if (vibrateEnabled) startVibration(vibrationMode)
+        if (currentAlarm.soundEnabled) startMediaPlayer(currentAlarm.soundUri)
+        if (currentAlarm.vibrateEnabled) startVibration(currentAlarm.vibrationMode)
 
-        val scheduledStop = Runnable { stopAlarm() }
+        val scheduledStop = Runnable {
+            activeAlarm?.let(::scheduleSnooze)
+            stopAlarm()
+        }
         stopRunnable = scheduledStop
-        handler.postDelayed(scheduledStop, ringDuration * 1000L)
+        handler.postDelayed(scheduledStop, currentAlarm.ringDuration * 1000L)
 
         return START_NOT_STICKY
     }
 
-    private fun scheduleSnooze(intent: Intent) {
+    private fun scheduleSnooze(alarm: ActiveAlarm) {
+        if (!alarm.snoozeEnabled || alarm.snoozeRepeatCount <= 0) return
         scheduler.scheduleSnooze(
-            alarmId = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_ID) ?: return,
-            label = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_LABEL) ?: "",
-            hour = intent.getIntExtra(AlarmReceiver.EXTRA_ALARM_HOUR, 0),
-            minute = intent.getIntExtra(AlarmReceiver.EXTRA_ALARM_MINUTE, 0),
-            ringDuration = intent.getIntExtra(AlarmReceiver.EXTRA_RING_DURATION, 60),
-            soundUri = intent.getStringExtra(AlarmReceiver.EXTRA_SOUND_URI) ?: "",
-            soundEnabled = intent.getBooleanExtra(AlarmReceiver.EXTRA_SOUND_ENABLED, true),
-            vibrateEnabled = intent.getBooleanExtra(AlarmReceiver.EXTRA_VIBRATE_ENABLED, true),
-            vibrationMode = intent.getStringExtra(AlarmReceiver.EXTRA_VIBRATION_MODE) ?: "Basic call",
-            snoozeEnabled = intent.getBooleanExtra(AlarmReceiver.EXTRA_SNOOZE_ENABLED, true),
-            snoozeIntervalMinutes = intent.getIntExtra(AlarmReceiver.EXTRA_SNOOZE_INTERVAL_MIN, 5)
+            alarmId = alarm.alarmId,
+            label = alarm.label,
+            hour = alarm.hour,
+            minute = alarm.minute,
+            ringDuration = alarm.ringDuration,
+            soundUri = alarm.soundUri,
+            soundEnabled = alarm.soundEnabled,
+            vibrateEnabled = alarm.vibrateEnabled,
+            vibrationMode = alarm.vibrationMode,
+            snoozeEnabled = alarm.snoozeEnabled,
+            snoozeIntervalMinutes = alarm.snoozeIntervalMinutes,
+            snoozeRepeatCount = alarm.snoozeRepeatCount - 1
         )
     }
 
@@ -162,6 +173,7 @@ class AlarmForegroundService : Service() {
     }
 
     private fun stopAlarm() {
+        activeAlarm = null
         AlarmStateHolder.stopRinging()
         stopRunnable?.let { handler.removeCallbacks(it) }
         mediaPlayer?.runCatching { if (isPlaying) stop(); release() }
@@ -178,6 +190,7 @@ class AlarmForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        activeAlarm = null
         stopRunnable?.let { handler.removeCallbacks(it) }
         mediaPlayer?.runCatching { if (isPlaying) stop(); release() }
         mediaPlayer = null
@@ -211,5 +224,22 @@ class AlarmForegroundService : Service() {
     companion object {
         const val ACTION_STOP = "com.example.miram.ACTION_ALARM_STOP"
         const val ACTION_SNOOZE = "com.example.miram.ACTION_ALARM_SNOOZE"
+    }
+
+    private fun Intent.toActiveAlarm(): ActiveAlarm {
+        return ActiveAlarm(
+            alarmId = getStringExtra(AlarmReceiver.EXTRA_ALARM_ID) ?: "",
+            label = getStringExtra(AlarmReceiver.EXTRA_ALARM_LABEL) ?: "",
+            hour = getIntExtra(AlarmReceiver.EXTRA_ALARM_HOUR, 0),
+            minute = getIntExtra(AlarmReceiver.EXTRA_ALARM_MINUTE, 0),
+            ringDuration = getIntExtra(AlarmReceiver.EXTRA_RING_DURATION, 60),
+            soundUri = getStringExtra(AlarmReceiver.EXTRA_SOUND_URI) ?: "",
+            soundEnabled = getBooleanExtra(AlarmReceiver.EXTRA_SOUND_ENABLED, true),
+            vibrateEnabled = getBooleanExtra(AlarmReceiver.EXTRA_VIBRATE_ENABLED, true),
+            vibrationMode = getStringExtra(AlarmReceiver.EXTRA_VIBRATION_MODE) ?: "Basic call",
+            snoozeEnabled = getBooleanExtra(AlarmReceiver.EXTRA_SNOOZE_ENABLED, true),
+            snoozeIntervalMinutes = getIntExtra(AlarmReceiver.EXTRA_SNOOZE_INTERVAL_MIN, 5),
+            snoozeRepeatCount = getIntExtra(AlarmReceiver.EXTRA_SNOOZE_REPEAT_COUNT, 3)
+        )
     }
 }

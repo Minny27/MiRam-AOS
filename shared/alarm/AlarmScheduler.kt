@@ -108,7 +108,8 @@ class AlarmScheduler @Inject constructor(
         vibrateEnabled: Boolean,
         vibrationMode: String,
         snoozeEnabled: Boolean,
-        snoozeIntervalMinutes: Int
+        snoozeIntervalMinutes: Int,
+        snoozeRepeatCount: Int
     ) {
         val triggerAt = System.currentTimeMillis() + snoozeIntervalMinutes * 60 * 1000L
         val intent = Intent(context, AlarmReceiver::class.java).apply {
@@ -123,6 +124,7 @@ class AlarmScheduler @Inject constructor(
             putExtra(AlarmReceiver.EXTRA_VIBRATION_MODE, vibrationMode)
             putExtra(AlarmReceiver.EXTRA_SNOOZE_ENABLED, snoozeEnabled)
             putExtra(AlarmReceiver.EXTRA_SNOOZE_INTERVAL_MIN, snoozeIntervalMinutes)
+            putExtra(AlarmReceiver.EXTRA_SNOOZE_REPEAT_COUNT, snoozeRepeatCount)
         }
         val pi = PendingIntent.getBroadcast(
             context,

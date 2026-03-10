@@ -105,8 +105,8 @@ class HomeViewModel @Inject constructor(
 private fun List<Alarm>.sortedForClockOrder(): List<Alarm> {
     val now = Calendar.getInstance()
     return sortedWith(
-        compareByDescending<Alarm> { alarm -> nextTriggerAtMillis(alarm, now) ?: Long.MIN_VALUE }
-            .thenByDescending { it.createdAt }
+        compareBy<Alarm> { alarm -> nextTriggerAtMillis(alarm, now) ?: Long.MAX_VALUE }
+            .thenBy { it.createdAt }
     )
 }
 

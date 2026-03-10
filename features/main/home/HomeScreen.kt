@@ -1,6 +1,6 @@
 package com.example.miram.features.main.home
 
-import android.graphics.Paint.Align
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,7 +37,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -52,348 +51,345 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onAddAlarm: () -> Unit = {},
-    onEditAlarm: (String) -> Unit = {},
-    viewModel: HomeViewModel = hiltViewModel()
+  onAddAlarm: () -> Unit = {},
+  onEditAlarm: (String) -> Unit = {},
+  viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+  val uiState by viewModel.uiState.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    if (uiState.selectionMode) {
-                        Text("${uiState.selectedIds.size}개 선택됨")
-                    } else {
-                        Text("알람", style = MaterialTheme.typography.headlineSmall)
-                    }
-                },
-                actions = {
-                    if (uiState.selectionMode) {
-                        TextButton(onClick = { viewModel.exitSelectionMode() }) { Text("취소") }
-                    }
-                }
-            )
-        },
-        bottomBar = {
-            if (uiState.selectionMode) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    TextButton(onClick = { viewModel.enableSelected() }) {
-                        Icon(Icons.Default.PowerSettingsNew, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("켜기")
-                    }
-                    TextButton(onClick = { viewModel.deleteSelected() }) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("모두 삭제")
-                    }
-                }
-            }
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+  BackHandler(enabled = uiState.selectionMode) {
+    viewModel.exitSelectionMode()
+  }
+
+  Scaffold(
+    bottomBar = {
+      if (uiState.selectionMode) {
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+          horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            if (!uiState.selectionMode) {
-                val summary = rememberRecentAlarmSummary(uiState.alarms)
-                Spacer(Modifier.height(8.dp))
-                if (summary.isOffState) {
-                    Text(
-                        text = summary.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                } else {
-                    Text(
-                        text = summary.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = summary.time,
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = summary.dateTime,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 6.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onAddAlarm) {
-                        Icon(Icons.Default.Add, contentDescription = "알람 추가")
-                    }
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "더보기")
-                    }
-                }
-            } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = uiState.selectedIds.size == uiState.alarms.size && uiState.alarms.isNotEmpty(),
-                        onCheckedChange = { viewModel.toggleSelectAll() }
-                    )
-                    Text("전체")
-                }
-            }
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(uiState.alarms, key = { it.id }) { alarm ->
-                    AlarmCard(
-                        alarm = alarm,
-                        selected = alarm.id in uiState.selectedIds,
-                        selectionMode = uiState.selectionMode,
-                        onTap = {
-                            viewModel.onAlarmTap(alarm.id) { onEditAlarm(alarm.id) }
-                        },
-                        onLongPress = { viewModel.onAlarmLongPress(alarm.id) },
-                        onToggle = { viewModel.toggleEnabled(alarm) }
-                    )
-                }
-            }
+          TextButton(onClick = { viewModel.enableSelected() }) {
+            Icon(Icons.Default.PowerSettingsNew, contentDescription = null)
+            Spacer(Modifier.width(6.dp))
+            Text("켜기")
+          }
+          TextButton(onClick = { viewModel.deleteSelected() }) {
+            Icon(Icons.Default.Delete, contentDescription = null)
+            Spacer(Modifier.width(6.dp))
+            Text("모두 삭제")
+          }
         }
+      }
     }
+  ) { innerPadding ->
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(innerPadding)
+        .padding(horizontal = 16.dp)
+    ) {
+      if (!uiState.selectionMode) {
+        val summary = rememberRecentAlarmSummary(uiState.alarms)
+        Spacer(Modifier.height(8.dp))
+        if (summary.isOffState) {
+          Text(
+            text = summary.title,
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+          )
+        } else {
+          Spacer(Modifier.height(100.dp))
+          Text(
+            text = summary.title,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+          )
+          Spacer(Modifier.height(2.dp))
+          Text(
+            text = summary.dateTime,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+          )
+          Spacer(Modifier.height(80.dp))
+        }
+
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 6.dp),
+          horizontalArrangement = Arrangement.End,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          IconButton(onClick = onAddAlarm) {
+            Icon(Icons.Default.Add, contentDescription = "알람 추가")
+          }
+          IconButton(onClick = {}) {
+            Icon(Icons.Default.MoreVert, contentDescription = "더보기")
+          }
+        }
+      } else {
+        Spacer(Modifier.height(100.dp))
+        Text(
+          text = "${uiState.selectedIds.size}개 선택됨",
+          style = MaterialTheme.typography.headlineMedium,
+          modifier = Modifier.fillMaxWidth(),
+          textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(80.dp))
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Checkbox(
+            checked = uiState.selectedIds.size == uiState.alarms.size && uiState.alarms.isNotEmpty(),
+            onCheckedChange = { viewModel.toggleSelectAll() }
+          )
+          Text("전체")
+        }
+      }
+
+      LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+      ) {
+        items(uiState.alarms, key = { it.id }) { alarm ->
+          AlarmCard(
+            alarm = alarm,
+            selected = alarm.id in uiState.selectedIds,
+            selectionMode = uiState.selectionMode,
+            onTap = {
+              viewModel.onAlarmTap(alarm.id) { onEditAlarm(alarm.id) }
+            },
+            onLongPress = { viewModel.onAlarmLongPress(alarm.id) },
+            onToggle = { viewModel.toggleEnabled(alarm) }
+          )
+        }
+      }
+    }
+  }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AlarmCard(
-    alarm: Alarm,
-    selected: Boolean,
-    selectionMode: Boolean,
-    onTap: () -> Unit,
-    onLongPress: () -> Unit,
-    onToggle: () -> Unit
+  alarm: Alarm,
+  selected: Boolean,
+  selectionMode: Boolean,
+  onTap: () -> Unit,
+  onLongPress: () -> Unit,
+  onToggle: () -> Unit
 ) {
-    val dateLabel = rememberAlarmDateLabel(alarm)
+  val dateLabel = rememberAlarmDateLabel(alarm)
+  val containerColor = when {
+    selected -> MaterialTheme.colorScheme.tertiaryContainer
+    alarm.isEnabled -> MaterialTheme.colorScheme.primaryContainer
+    else -> MaterialTheme.colorScheme.surfaceContainer
+  }
+  val contentColor = when {
+    selected -> MaterialTheme.colorScheme.onTertiaryContainer
+    alarm.isEnabled -> MaterialTheme.colorScheme.onPrimaryContainer
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
+  }
 
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = onTap, onLongClick = onLongPress),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else if (alarm.isEnabled) {
-                MaterialTheme.colorScheme.surfaceContainerLow
-            } else {
-                MaterialTheme.colorScheme.surfaceContainer
-            }
-        )
+  ElevatedCard(
+    modifier = Modifier
+      .fillMaxWidth()
+      .combinedClickable(onClick = onTap, onLongClick = onLongPress),
+    colors = CardDefaults.elevatedCardColors(
+      containerColor = containerColor
+    )
+  ) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 14.dp),
+      verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (selectionMode) {
-                Checkbox(checked = selected, onCheckedChange = { onTap() })
-                Spacer(Modifier.width(8.dp))
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                if (!alarm.label.isBlank()) {
-                    Text(
-                        text = alarm.label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (alarm.isEnabled) Color.White else Color.Gray
-                    )
-                    Spacer(Modifier.height(20.dp))
-                }
-                Row(verticalAlignment = Alignment.Bottom) {
-                    val timeColor =
-                        if (alarm.isEnabled) Color.White else Color.Gray
-                    Text(
-                        text = alarm.amPm,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = timeColor,
-                        textAlign = TextAlign.End
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = alarm.twelveHourTimeString,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Light,
-                        color = timeColor
-                    )
-                }
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = dateLabel,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = if (alarm.isEnabled) Color.White else Color.Gray
-                )
-                if (!selectionMode) {
-                    Spacer(Modifier.width(10.dp))
-                    androidx.compose.material3.Switch(
-                        checked = alarm.isEnabled,
-                        onCheckedChange = { onToggle() }
-                    )
-                }
-            }
+      if (selectionMode) {
+        Checkbox(checked = selected, onCheckedChange = { onTap() })
+        Spacer(Modifier.width(8.dp))
+      }
+      Column(modifier = Modifier.weight(1f)) {
+        if (!alarm.label.isBlank()) {
+          Text(
+            text = alarm.label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = contentColor
+          )
+          Spacer(Modifier.height(20.dp))
         }
+        Row(verticalAlignment = Alignment.Bottom) {
+          Text(
+            text = alarm.amPm,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = contentColor,
+            textAlign = TextAlign.End
+          )
+          Spacer(Modifier.width(8.dp))
+          Text(
+            text = alarm.twelveHourTimeString,
+            fontSize = 36.sp,
+            fontWeight = FontWeight.Light,
+            color = contentColor
+          )
+        }
+      }
+      Row(
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text(
+          text = dateLabel,
+          fontSize = 16.sp,
+          fontWeight = FontWeight.Medium,
+          color = contentColor
+        )
+        if (!selectionMode) {
+          Spacer(Modifier.width(10.dp))
+          androidx.compose.material3.Switch(
+            checked = alarm.isEnabled,
+            onCheckedChange = { onToggle() }
+          )
+        }
+      }
     }
+  }
 }
 
 @Composable
 private fun rememberRecentAlarmSummary(alarms: List<Alarm>): RecentAlarmSummary {
-    val now = Calendar.getInstance()
-    val nextEnabled = alarms
-        .filter { it.isEnabled }
-        .mapNotNull { alarm -> nextTriggerTimeMillis(alarm, now)?.let { alarm to it } }
-        .minByOrNull { it.second }
-        ?: return RecentAlarmSummary(
-            title = "모든 알람이 꺼진 상태입니다",
-            time = "",
-            dateTime = "",
-            isOffState = true
-        )
-    val (alarm, triggerAtMillis) = nextEnabled
-    val diffMillis = (triggerAtMillis - now.timeInMillis).coerceAtLeast(0L)
-    val diffMinute = (diffMillis / 60000L).toInt()
-
-    val hours = diffMinute / 60
-    val mins = diffMinute % 60
-    val remain = when {
-        diffMinute == 0 -> "곧 알람이 울립니다"
-        diffMillis >= 24 * 60 * 60 * 1000L -> "${kotlin.math.ceil(diffMillis / (24 * 60 * 60 * 1000.0)).toInt()}일 후에 알람이 울립니다"
-        hours == 0 -> "${mins}분 남음"
-        mins == 0 -> "${hours}시간 남음"
-        else -> "${hours}시간 ${mins}분 남음"
-    }
-
-    val dateTime = SimpleDateFormat("M월 d일 (E) a h:mm", Locale.KOREAN).format(triggerAtMillis)
-
-    val amPm = if (alarm.hour < 12) "오전" else "오후"
-    val hour12 = if (alarm.hour % 12 == 0) 12 else alarm.hour % 12
-    return RecentAlarmSummary(
-        title = remain,
-        time = "$amPm $hour12:${"%02d".format(alarm.minute)}",
-        dateTime = dateTime,
-        isOffState = false
+  val now = Calendar.getInstance()
+  val nextEnabled = alarms
+    .filter { it.isEnabled }
+    .mapNotNull { alarm -> nextTriggerTimeMillis(alarm, now)?.let { alarm to it } }
+    .minByOrNull { it.second }
+    ?: return RecentAlarmSummary(
+      title = "모든 알람이 꺼진 상태입니다",
+      time = "",
+      dateTime = "",
+      isOffState = true
     )
+  val (alarm, triggerAtMillis) = nextEnabled
+  val diffMillis = (triggerAtMillis - now.timeInMillis).coerceAtLeast(0L)
+  val diffMinute = (diffMillis / 60000L).toInt()
+
+  val hours = diffMinute / 60
+  val mins = diffMinute % 60
+  val remain = when {
+    diffMinute == 0 -> "곧 알람이 울립니다"
+    diffMillis >= 24 * 60 * 60 * 1000L -> "${
+      kotlin.math.ceil(diffMillis / (24 * 60 * 60 * 1000.0)).toInt()
+    }일 후에 알람이 울립니다"
+
+    hours == 0 -> "${mins}분 후에 알람이 울립니다"
+    mins == 0 -> "${hours}시간 후에 알람이 울립니다"
+    else -> "${hours}시간 ${mins}분 후에 알람이 울립니다"
+  }
+
+  val dateTime = SimpleDateFormat("M월 d일 (E) a h:mm", Locale.KOREAN).format(triggerAtMillis)
+
+  val amPm = if (alarm.hour < 12) "오전" else "오후"
+  val hour12 = if (alarm.hour % 12 == 0) 12 else alarm.hour % 12
+  return RecentAlarmSummary(
+    title = remain,
+    time = "$amPm $hour12:${"%02d".format(alarm.minute)}",
+    dateTime = dateTime,
+    isOffState = false
+  )
 }
 
 private data class RecentAlarmSummary(
-    val title: String,
-    val time: String,
-    val dateTime: String,
-    val isOffState: Boolean
+  val title: String,
+  val time: String,
+  val dateTime: String,
+  val isOffState: Boolean
 )
 
 private fun nextTriggerTimeMillis(alarm: Alarm, now: Calendar = Calendar.getInstance()): Long? {
-    fun fromBase(base: Long): Long {
-        val cal = Calendar.getInstance().apply { timeInMillis = base }
-        cal.set(Calendar.HOUR_OF_DAY, alarm.hour)
-        cal.set(Calendar.MINUTE, alarm.minute)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        while (cal.timeInMillis <= now.timeInMillis) {
-            cal.add(Calendar.DAY_OF_YEAR, 1)
-        }
-        return cal.timeInMillis
+  fun fromBase(base: Long): Long {
+    val cal = Calendar.getInstance().apply { timeInMillis = base }
+    cal.set(Calendar.HOUR_OF_DAY, alarm.hour)
+    cal.set(Calendar.MINUTE, alarm.minute)
+    cal.set(Calendar.SECOND, 0)
+    cal.set(Calendar.MILLISECOND, 0)
+    while (cal.timeInMillis <= now.timeInMillis) {
+      cal.add(Calendar.DAY_OF_YEAR, 1)
     }
+    return cal.timeInMillis
+  }
 
-    if (alarm.specificDateMillis != null) return fromBase(alarm.specificDateMillis)
+  if (alarm.specificDateMillis != null) return fromBase(alarm.specificDateMillis)
 
-    val repeat = alarm.repeatWeekdays().toSet()
-    if (repeat.isNotEmpty()) {
-        val map = mapOf(
-            Weekday.SUN to Calendar.SUNDAY,
-            Weekday.MON to Calendar.MONDAY,
-            Weekday.TUE to Calendar.TUESDAY,
-            Weekday.WED to Calendar.WEDNESDAY,
-            Weekday.THU to Calendar.THURSDAY,
-            Weekday.FRI to Calendar.FRIDAY,
-            Weekday.SAT to Calendar.SATURDAY
-        )
-        return repeat.mapNotNull { weekday ->
-            val targetDow = map[weekday] ?: return@mapNotNull null
-            val cal = Calendar.getInstance().apply {
-                timeInMillis = now.timeInMillis
-                set(Calendar.DAY_OF_WEEK, targetDow)
-                set(Calendar.HOUR_OF_DAY, alarm.hour)
-                set(Calendar.MINUTE, alarm.minute)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-                if (timeInMillis <= now.timeInMillis) add(Calendar.WEEK_OF_YEAR, 1)
-            }
-            cal.timeInMillis
-        }.minOrNull()
-    }
-
-    val cal = Calendar.getInstance().apply {
+  val repeat = alarm.repeatWeekdays().toSet()
+  if (repeat.isNotEmpty()) {
+    val map = mapOf(
+      Weekday.SUN to Calendar.SUNDAY,
+      Weekday.MON to Calendar.MONDAY,
+      Weekday.TUE to Calendar.TUESDAY,
+      Weekday.WED to Calendar.WEDNESDAY,
+      Weekday.THU to Calendar.THURSDAY,
+      Weekday.FRI to Calendar.FRIDAY,
+      Weekday.SAT to Calendar.SATURDAY
+    )
+    return repeat.mapNotNull { weekday ->
+      val targetDow = map[weekday] ?: return@mapNotNull null
+      val cal = Calendar.getInstance().apply {
         timeInMillis = now.timeInMillis
+        set(Calendar.DAY_OF_WEEK, targetDow)
         set(Calendar.HOUR_OF_DAY, alarm.hour)
         set(Calendar.MINUTE, alarm.minute)
         set(Calendar.SECOND, 0)
         set(Calendar.MILLISECOND, 0)
-        if (timeInMillis <= now.timeInMillis) add(Calendar.DAY_OF_YEAR, 1)
-    }
-    return cal.timeInMillis
+        if (timeInMillis <= now.timeInMillis) add(Calendar.WEEK_OF_YEAR, 1)
+      }
+      cal.timeInMillis
+    }.minOrNull()
+  }
+
+  val cal = Calendar.getInstance().apply {
+    timeInMillis = now.timeInMillis
+    set(Calendar.HOUR_OF_DAY, alarm.hour)
+    set(Calendar.MINUTE, alarm.minute)
+    set(Calendar.SECOND, 0)
+    set(Calendar.MILLISECOND, 0)
+    if (timeInMillis <= now.timeInMillis) add(Calendar.DAY_OF_YEAR, 1)
+  }
+  return cal.timeInMillis
 }
 
 @Composable
 private fun rememberAlarmDateLabel(alarm: Alarm): String {
-    alarm.specificDateMillis?.let { millis ->
-        return SimpleDateFormat("M월 d일 (E)", Locale.KOREAN).format(millis)
-    }
+  alarm.specificDateMillis?.let { millis ->
+    return SimpleDateFormat("M월 d일 (E)", Locale.KOREAN).format(millis)
+  }
 
-    val weekdayOrder = listOf(
-        Weekday.SUN, Weekday.MON, Weekday.TUE, Weekday.WED,
-        Weekday.THU, Weekday.FRI, Weekday.SAT
-    )
-    val repeatDays = alarm.repeatWeekdays().toSet()
-    if (repeatDays.size == 7) return "매일"
-    if (repeatDays.isNotEmpty()) {
-        return weekdayOrder.filter { it in repeatDays }.joinToString(", ") { it.label }
-    }
+  val weekdayOrder = listOf(
+    Weekday.SUN, Weekday.MON, Weekday.TUE, Weekday.WED,
+    Weekday.THU, Weekday.FRI, Weekday.SAT
+  )
+  val repeatDays = alarm.repeatWeekdays().toSet()
+  if (repeatDays.size == 7) return "매일"
+  if (repeatDays.isNotEmpty()) {
+    return weekdayOrder.filter { it in repeatDays }.joinToString(", ") { it.label }
+  }
 
-    val now = Calendar.getInstance()
-    val cal = Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, alarm.hour)
-        set(Calendar.MINUTE, alarm.minute)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-        if (timeInMillis <= now.timeInMillis) add(Calendar.DAY_OF_YEAR, 1)
-    }
-    return SimpleDateFormat("M월 d일 (E)", Locale.KOREAN).format(cal.time)
+  val now = Calendar.getInstance()
+  val cal = Calendar.getInstance().apply {
+    set(Calendar.HOUR_OF_DAY, alarm.hour)
+    set(Calendar.MINUTE, alarm.minute)
+    set(Calendar.SECOND, 0)
+    set(Calendar.MILLISECOND, 0)
+    if (timeInMillis <= now.timeInMillis) add(Calendar.DAY_OF_YEAR, 1)
+  }
+  return SimpleDateFormat("M월 d일 (E)", Locale.KOREAN).format(cal.time)
 }

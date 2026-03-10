@@ -35,6 +35,7 @@ data class AlarmDetailUiState(
     val snoozeEnabled: Boolean = true,
     val snoozeIntervalMinutes: Int = 5,
     val snoozeRepeatCount: Int = 3,
+    val hasUnsavedChanges: Boolean = false,
     val isSaved: Boolean = false,
     val error: String? = null
 )
@@ -45,12 +46,29 @@ class AlarmDetailViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+    private data class AlarmDetailDraft(
+        val hour: Int,
+        val minute: Int,
+        val label: String,
+        val selectedDays: Set<Weekday>,
+        val ringDuration: Int,
+        val soundUri: String,
+        val soundTitle: String,
+        val soundEnabled: Boolean,
+        val selectedDateMillis: Long?,
+        val vibrateEnabled: Boolean,
+        val vibrationMode: String,
+        val snoozeEnabled: Boolean,
+        val snoozeIntervalMinutes: Int,
+        val snoozeRepeatCount: Int
+    )
 
     private val alarmId: String? = savedStateHandle["alarmId"]
     val isEditMode: Boolean get() = alarmId != null
 
     private val _uiState = MutableStateFlow(AlarmDetailUiState())
     val uiState: StateFlow<AlarmDetailUiState> = _uiState.asStateFlow()
+    private var initialDraft: AlarmDetailDraft? = null
 
     init {
         if (alarmId != null) loadAlarm(alarmId)
@@ -59,20 +77,20 @@ class AlarmDetailViewModel @Inject constructor(
             val defaultSoundTitle = defaultSoundUri?.let {
                 RingtoneManager.getRingtone(context, it)?.getTitle(context)
             } ?: "기본 알람"
-            _uiState.value = _uiState.value.copy(
+            setInitialState(_uiState.value.copy(
                 hour = 6,
                 minute = 0,
                 ringDuration = RingDuration.normalize(_uiState.value.ringDuration),
                 soundUri = defaultSoundUri?.toString().orEmpty(),
                 soundTitle = defaultSoundTitle
-            )
+            ))
         }
     }
 
     private fun loadAlarm(id: String) {
         viewModelScope.launch {
             val alarm = repository.getAlarmById(id) ?: return@launch
-            _uiState.value = _uiState.value.copy(
+            setInitialState(_uiState.value.copy(
                 hour = alarm.hour,
                 minute = alarm.minute,
                 label = alarm.label,
@@ -92,40 +110,44 @@ class AlarmDetailViewModel @Inject constructor(
                             ?.getTitle(context)
                     }.getOrNull()
                 } ?: "기본 알람"
-            )
+            ))
         }
     }
 
-    fun onHourChange(hour: Int) { _uiState.value = _uiState.value.copy(hour = hour) }
-    fun onMinuteChange(minute: Int) { _uiState.value = _uiState.value.copy(minute = minute) }
-    fun onLabelChange(label: String) { _uiState.value = _uiState.value.copy(label = label) }
+    fun onHourChange(hour: Int) = updateState { copy(hour = hour) }
+    fun onMinuteChange(minute: Int) = updateState { copy(minute = minute) }
+    fun onLabelChange(label: String) = updateState { copy(label = label) }
     fun onRingDurationChange(seconds: Int) {
-        _uiState.value = _uiState.value.copy(ringDuration = RingDuration.normalize(seconds))
+        updateState { copy(ringDuration = RingDuration.normalize(seconds)) }
     }
 
     fun onSoundSelected(uri: String, title: String) {
-        _uiState.value = _uiState.value.copy(soundUri = uri, soundTitle = title)
+        updateState { copy(soundUri = uri, soundTitle = title) }
     }
-    fun onSoundToggle(enabled: Boolean) { _uiState.value = _uiState.value.copy(soundEnabled = enabled) }
+    fun onSoundToggle(enabled: Boolean) = updateState { copy(soundEnabled = enabled) }
     fun onDateSelected(millis: Long?) {
-        _uiState.value = _uiState.value.copy(
-            selectedDateMillis = millis,
-            selectedDays = if (millis != null) emptySet() else _uiState.value.selectedDays
-        )
+        updateState {
+            copy(
+                selectedDateMillis = millis,
+                selectedDays = if (millis != null) emptySet() else selectedDays
+            )
+        }
     }
-    fun onVibrateToggle(enabled: Boolean) { _uiState.value = _uiState.value.copy(vibrateEnabled = enabled) }
-    fun onVibrationModeChange(mode: String) { _uiState.value = _uiState.value.copy(vibrationMode = mode) }
-    fun onSnoozeToggle(enabled: Boolean) { _uiState.value = _uiState.value.copy(snoozeEnabled = enabled) }
-    fun onSnoozeIntervalChange(minutes: Int) { _uiState.value = _uiState.value.copy(snoozeIntervalMinutes = minutes) }
-    fun onSnoozeRepeatCountChange(count: Int) { _uiState.value = _uiState.value.copy(snoozeRepeatCount = count) }
+    fun onVibrateToggle(enabled: Boolean) = updateState { copy(vibrateEnabled = enabled) }
+    fun onVibrationModeChange(mode: String) = updateState { copy(vibrationMode = mode) }
+    fun onSnoozeToggle(enabled: Boolean) = updateState { copy(snoozeEnabled = enabled) }
+    fun onSnoozeIntervalChange(minutes: Int) = updateState { copy(snoozeIntervalMinutes = minutes) }
+    fun onSnoozeRepeatCountChange(count: Int) = updateState { copy(snoozeRepeatCount = count) }
 
     fun toggleWeekday(weekday: Weekday) {
-        val current = _uiState.value.selectedDays.toMutableSet()
-        if (weekday in current) current.remove(weekday) else current.add(weekday)
-        _uiState.value = _uiState.value.copy(
-            selectedDays = current,
-            selectedDateMillis = if (current.isNotEmpty()) null else _uiState.value.selectedDateMillis
-        )
+        updateState {
+            val current = selectedDays.toMutableSet()
+            if (weekday in current) current.remove(weekday) else current.add(weekday)
+            copy(
+                selectedDays = current,
+                selectedDateMillis = if (current.isNotEmpty()) null else selectedDateMillis
+            )
+        }
     }
 
     fun save() {
@@ -173,7 +195,11 @@ class AlarmDetailViewModel @Inject constructor(
                     Toast.LENGTH_LONG
                 ).show()
             }
-            _uiState.value = _uiState.value.copy(isSaved = true)
+            initialDraft = _uiState.value.toDraft()
+            _uiState.value = _uiState.value.copy(
+                hasUnsavedChanges = false,
+                isSaved = true
+            )
         }
     }
 
@@ -206,4 +232,36 @@ class AlarmDetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isSaved = true)
         }
     }
+
+    private fun setInitialState(state: AlarmDetailUiState) {
+        initialDraft = state.toDraft()
+        _uiState.value = state.copy(
+            hasUnsavedChanges = false,
+            isSaved = false,
+            error = null
+        )
+    }
+
+    private fun updateState(transform: AlarmDetailUiState.() -> AlarmDetailUiState) {
+        val updated = _uiState.value.transform().copy(isSaved = false)
+        val hasUnsavedChanges = initialDraft?.let { updated.toDraft() != it } ?: false
+        _uiState.value = updated.copy(hasUnsavedChanges = hasUnsavedChanges)
+    }
+
+    private fun AlarmDetailUiState.toDraft(): AlarmDetailDraft = AlarmDetailDraft(
+        hour = hour,
+        minute = minute,
+        label = label,
+        selectedDays = selectedDays,
+        ringDuration = ringDuration,
+        soundUri = soundUri,
+        soundTitle = soundTitle,
+        soundEnabled = soundEnabled,
+        selectedDateMillis = selectedDateMillis,
+        vibrateEnabled = vibrateEnabled,
+        vibrationMode = vibrationMode,
+        snoozeEnabled = snoozeEnabled,
+        snoozeIntervalMinutes = snoozeIntervalMinutes,
+        snoozeRepeatCount = snoozeRepeatCount
+    )
 }

@@ -59,7 +59,7 @@ fun AlarmRingingScreen(
             if (uiState.totalSeconds > 0) {
                 Text(
                     text = uiState.remainingLabel,
-                    fontSize = 48.sp,
+                    fontSize = 52.sp,
                     fontWeight = FontWeight.Thin
                 )
                 LinearProgressIndicator(
@@ -78,7 +78,7 @@ fun AlarmRingingScreen(
                     .height(64.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("알람 해제", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("알람 해제", fontSize = 24.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

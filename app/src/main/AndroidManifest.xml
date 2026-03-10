@@ -16,7 +16,10 @@
         android:allowBackup="true"
         android:label="MiRam"
         android:theme="@style/Theme.MiRam"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:icon="@mipmap/ic_launcher">
+
+        <!-- MainActivity -->
 
         <activity
             android:name="com.example.MainActivity"

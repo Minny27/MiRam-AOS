@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,13 +19,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +40,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +64,8 @@ fun HomeScreen(
   viewModel: HomeViewModel = hiltViewModel()
 ) {
   val uiState by viewModel.uiState.collectAsState()
+  var showMoreMenu by remember { mutableStateOf(false) }
+  var showSortMenu by remember { mutableStateOf(false) }
 
   BackHandler(enabled = uiState.selectionMode) {
     viewModel.exitSelectionMode()
@@ -130,8 +140,59 @@ fun HomeScreen(
           IconButton(onClick = onAddAlarm) {
             Icon(Icons.Default.Add, contentDescription = "알람 추가")
           }
-          IconButton(onClick = {}) {
-            Icon(Icons.Default.MoreVert, contentDescription = "더보기")
+          Box {
+            IconButton(onClick = { showMoreMenu = true }) {
+              Icon(Icons.Default.MoreVert, contentDescription = "더보기")
+            }
+            DropdownMenu(
+              expanded = showMoreMenu,
+              onDismissRequest = { showMoreMenu = false }
+            ) {
+              DropdownMenuItem(
+                text = { Text("편집") },
+                onClick = {
+                  showMoreMenu = false
+                  viewModel.enterSelectionMode()
+                }
+              )
+              DropdownMenuItem(
+                text = { Text("정렬") },
+                onClick = {
+                  showMoreMenu = false
+                  showSortMenu = true
+                }
+              )
+            }
+            DropdownMenu(
+              expanded = showSortMenu,
+              onDismissRequest = { showSortMenu = false }
+            ) {
+              DropdownMenuItem(
+                text = { Text("알람 시간 순서") },
+                leadingIcon = {
+                  if (uiState.sortOrder == HomeSortOrder.AlarmTime) {
+                    Icon(Icons.Default.Check, contentDescription = null)
+                  }
+                },
+                onClick = {
+                  showSortMenu = false
+                  viewModel.updateSortOrder(HomeSortOrder.AlarmTime)
+                }
+              )
+              HorizontalDivider()
+              DropdownMenuItem(
+                text = { Text("직접설정한 순서") },
+                leadingIcon = {
+                  if (uiState.sortOrder == HomeSortOrder.Manual) {
+                    Icon(Icons.Default.Check, contentDescription = null)
+                  }
+                },
+                onClick = {
+                  showSortMenu = false
+                  viewModel.updateSortOrder(HomeSortOrder.Manual)
+                }
+              )
+            }
           }
         }
       } else {

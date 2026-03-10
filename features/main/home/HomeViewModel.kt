@@ -15,9 +15,15 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
 
+enum class HomeSortOrder {
+    AlarmTime,
+    Manual
+}
+
 data class HomeUiState(
     val alarms: List<Alarm> = emptyList(),
     val isLoading: Boolean = false,
+    val sortOrder: HomeSortOrder = HomeSortOrder.AlarmTime,
     val selectionMode: Boolean = false,
     val selectedIds: Set<String> = emptySet()
 )
@@ -28,13 +34,19 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val selectedIds = MutableStateFlow<Set<String>>(emptySet())
+    private val selectionMode = MutableStateFlow(false)
+    private val sortOrder = MutableStateFlow(HomeSortOrder.AlarmTime)
 
     val uiState = repository.getAllAlarms()
-        .map { alarms -> alarms.sortedForClockOrder() }
-        .combine(selectedIds) { alarms, selected ->
+        .combine(selectedIds) { alarms, selected -> alarms to selected }
+        .combine(selectionMode) { (alarms, selected), isSelectionMode ->
+            Triple(alarms, selected, isSelectionMode)
+        }
+        .combine(sortOrder) { (alarms, selected, isSelectionMode), currentSortOrder ->
             HomeUiState(
-                alarms = alarms,
-                selectionMode = selected.isNotEmpty(),
+                alarms = alarms.sortedFor(currentSortOrder),
+                sortOrder = currentSortOrder,
+                selectionMode = isSelectionMode,
                 selectedIds = selected
             )
         }
@@ -53,11 +65,12 @@ class HomeViewModel @Inject constructor(
     }
 
     fun onAlarmLongPress(alarmId: String) {
+        selectionMode.value = true
         selectedIds.value = selectedIds.value + alarmId
     }
 
     fun onAlarmTap(alarmId: String, onEdit: () -> Unit) {
-        if (selectedIds.value.isEmpty()) {
+        if (!selectionMode.value) {
             onEdit()
             return
         }
@@ -66,6 +79,21 @@ class HomeViewModel @Inject constructor(
         } else {
             selectedIds.value + alarmId
         }
+    }
+
+    fun enterSelectionMode() {
+        val alarms = uiState.value.alarms
+        if (alarms.isEmpty()) return
+        selectionMode.value = true
+        selectedIds.value = if (alarms.size == 1) {
+            setOf(alarms.first().id)
+        } else {
+            emptySet()
+        }
+    }
+
+    fun updateSortOrder(order: HomeSortOrder) {
+        sortOrder.value = order
     }
 
     fun toggleSelectAll() {
@@ -78,6 +106,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun exitSelectionMode() {
+        selectionMode.value = false
         selectedIds.value = emptySet()
     }
 
@@ -87,7 +116,7 @@ class HomeViewModel @Inject constructor(
             uiState.value.alarms.filter { it.id in selected }.forEach { alarm ->
                 repository.setEnabled(alarm, true)
             }
-            selectedIds.value = emptySet()
+            exitSelectionMode()
         }
     }
 
@@ -97,9 +126,14 @@ class HomeViewModel @Inject constructor(
             uiState.value.alarms.filter { it.id in selected }.forEach { alarm ->
                 repository.deleteAlarm(alarm)
             }
-            selectedIds.value = emptySet()
+            exitSelectionMode()
         }
     }
+}
+
+private fun List<Alarm>.sortedFor(sortOrder: HomeSortOrder): List<Alarm> = when (sortOrder) {
+    HomeSortOrder.AlarmTime -> sortedForClockOrder()
+    HomeSortOrder.Manual -> sortedBy { it.createdAt }
 }
 
 private fun List<Alarm>.sortedForClockOrder(): List<Alarm> {

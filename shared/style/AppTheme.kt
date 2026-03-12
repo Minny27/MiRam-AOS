@@ -11,7 +11,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
 
 val AccentColor = Color(0xFFFF0A54)
-val AccentSurfaceColor = Color(0xFFFFB0C8)
+val Color.Companion.Background: Color get() = Color(0xFFF5F5F5)
+val Color.Companion.BackgroundGray: Color get() = Color(0xFF181818)
 
 private val LightColors = lightColorScheme(
     primary = AccentColor,

@@ -1,4 +1,25 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.util.Properties
+
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) {
+        file.inputStream().use(::load)
+    }
+}
+
+fun propertyOrEnv(name: String, envName: String = name): String? =
+    providers.gradleProperty(name).orNull
+        ?: System.getenv(envName)
+        ?: keystoreProperties.getProperty(name)
+
+val releaseStoreFile = propertyOrEnv("storeFile")
+val releaseStorePassword = propertyOrEnv("storePassword")
+val releaseKeyAlias = propertyOrEnv("keyAlias")
+val releaseKeyPassword = propertyOrEnv("keyPassword")
+val hasReleaseSigning =
+    listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+        .all { !it.isNullOrBlank() }
 
 plugins {
     alias(libs.plugins.android.application)
@@ -15,14 +36,29 @@ android {
     defaultConfig {
         applicationId = "com.example.miram"
         minSdk = 26
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = providers.gradleProperty("appVersionCode").orNull?.toIntOrNull() ?: 1
+        versionName = providers.gradleProperty("appVersionName").orNull ?: "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "../proguard-rules.pro"

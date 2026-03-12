@@ -1,12 +1,14 @@
 package com.example.miram.features.main.alarmdetail
 
 import android.app.Activity
+import android.app.AlarmManager
 import android.app.AlertDialog as PlatformAlertDialog
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -99,12 +101,21 @@ fun AlarmDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var showDiscardDialog by remember { mutableStateOf(false) }
+    var showExactAlarmPermissionDialog by remember { mutableStateOf(false) }
     val latestOnBack by rememberUpdatedState(onBack)
     val latestSave by rememberUpdatedState(viewModel::save)
     val isDarkTheme = isSystemInDarkTheme()
     val screenBackground = if (isDarkTheme) Color.Black else Color.Background
     val cardBackground = if (isDarkTheme) Color.BackgroundGray else Color.White
     val contentColor = if (isDarkTheme) Color.White else Color.Black
+
+    fun requiresExactAlarmPermission(): Boolean {
+        if (Build.VERSION.SDK_INT !in Build.VERSION_CODES.S..Build.VERSION_CODES.S_V2) {
+            return false
+        }
+        val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return false
+        return !alarmManager.canScheduleExactAlarms()
+    }
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) onBack()
@@ -176,7 +187,13 @@ fun AlarmDetailScreen(
                         containerColor = Color.Transparent,
                         contentColor = contentColor
                     ),
-                    onClick = { viewModel.save() },
+                    onClick = {
+                        if (requiresExactAlarmPermission()) {
+                            showExactAlarmPermissionDialog = true
+                        } else {
+                            viewModel.save()
+                        }
+                    },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
@@ -300,6 +317,35 @@ fun AlarmDetailScreen(
                 dialog.dismiss()
             }
         }
+    }
+
+    if (showExactAlarmPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showExactAlarmPermissionDialog = false },
+            title = { Text("정확한 알람 권한 필요") },
+            text = {
+                Text("Android 12에서는 알람을 정확한 시간에 울리려면 시스템 설정에서 정확한 알람 권한을 허용해야 합니다.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExactAlarmPermissionDialog = false
+                        context.startActivity(
+                            Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                        )
+                    }
+                ) {
+                    Text("설정으로 이동")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExactAlarmPermissionDialog = false }) {
+                    Text("닫기")
+                }
+            }
+        )
     }
 }
 

@@ -18,6 +18,7 @@ captures/
 # Signing
 *.jks
 *.keystore
+key.properties
 
 # =========================
 # Android Studio

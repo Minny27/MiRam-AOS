@@ -15,6 +15,20 @@ class AlarmRepositoryImpl @Inject constructor(
 
     override suspend fun getAlarmById(id: String): Alarm? = dao.getAlarmById(id)
 
+    override suspend fun removeDuplicatesOf(alarm: Alarm, excludeId: String?) {
+        val normalized = alarm.normalizePastSpecificDate()
+        dao.findDuplicateAlarms(
+            hour = normalized.hour,
+            minute = normalized.minute,
+            repeatDays = normalized.repeatDays,
+            specificDateMillis = normalized.specificDateMillis,
+            excludeId = excludeId
+        ).forEach { duplicate ->
+            scheduler.cancel(duplicate)
+            dao.deleteAlarm(duplicate)
+        }
+    }
+
     override suspend fun addAlarm(alarm: Alarm) {
         val normalized = alarm.normalizePastSpecificDate()
         dao.insertAlarm(normalized)

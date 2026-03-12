@@ -195,6 +195,7 @@ class AlarmDetailViewModel @Inject constructor(
                 snoozeIntervalMinutes = s.snoozeIntervalMinutes,
                 snoozeRepeatCount = s.snoozeRepeatCount
             )
+            repository.removeDuplicatesOf(alarm, excludeId = alarmId)
             if (alarmId == null) repository.addAlarm(alarm)
             else repository.updateAlarm(alarm)
             initialDraft = _uiState.value.toDraft()

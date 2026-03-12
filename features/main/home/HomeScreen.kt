@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +18,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxColors
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
@@ -35,11 +38,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,12 +60,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.miram.shared.model.Alarm
 import com.example.miram.shared.model.Weekday
 import com.example.miram.shared.style.AccentColor
-import com.example.miram.shared.style.AccentSurfaceColor
+import com.example.miram.shared.style.Background
+import com.example.miram.shared.style.BackgroundGray
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlin.math.ceil
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     onAddAlarm: () -> Unit = {},
@@ -75,7 +82,37 @@ fun HomeScreen(
         viewModel.exitSelectionMode()
     }
 
+    val isDarkTheme = isSystemInDarkTheme()
+    val containerColor = if (isDarkTheme) Color.Black else Color.Background
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+    val uncheckedBoxBorderColor = if (isDarkTheme) Color.White else Color.LightGray
+    val checkboxColors = CheckboxColors(
+        checkedCheckmarkColor = Color.White,
+        uncheckedCheckmarkColor = Color.Transparent,
+        checkedBoxColor = AccentColor,
+        uncheckedBoxColor = Color.Transparent,
+        disabledCheckedBoxColor = Color.Transparent,
+        disabledUncheckedBoxColor = Color.Transparent,
+        disabledIndeterminateBoxColor = Color.Transparent,
+        checkedBorderColor = AccentColor,
+        uncheckedBorderColor = uncheckedBoxBorderColor,
+        disabledBorderColor = Color.Transparent,
+        disabledUncheckedBorderColor = Color.Transparent,
+        disabledIndeterminateBorderColor = Color.Transparent
+    )
+    val dropdownContainerColor = if (isDarkTheme) {
+        Color.BackgroundGray.copy(alpha = 0.92f)
+    } else {
+        Color.White.copy(alpha = 0.96f)
+    }
+    val dropdownContentColor = if (isDarkTheme) {
+        Color.White
+    } else {
+        Color.Black
+    }
+
     Scaffold(
+        containerColor = containerColor,
         bottomBar = {
             if (uiState.selectionMode) {
                 Row(
@@ -86,14 +123,28 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     TextButton(onClick = { viewModel.enableSelected() }) {
-                        Icon(Icons.Default.PowerSettingsNew, contentDescription = null)
+                        Icon(
+                            Icons.Default.PowerSettingsNew,
+                            contentDescription = null,
+                            tint = contentColor
+                        )
                         Spacer(Modifier.width(6.dp))
-                        Text("켜기")
+                        Text(
+                            "켜기",
+                            color = contentColor
+                        )
                     }
                     TextButton(onClick = { viewModel.deleteSelected() }) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = null,
+                            tint = contentColor
+                        )
                         Spacer(Modifier.width(6.dp))
-                        Text("모두 삭제")
+                        Text(
+                            "모두 삭제",
+                            color = contentColor
+                        )
                     }
                 }
             }
@@ -107,93 +158,172 @@ fun HomeScreen(
         ) {
             if (!uiState.selectionMode) {
                 val summary = rememberRecentAlarmSummary(uiState.alarms)
-                Spacer(Modifier.height(100.dp))
-                if (summary.isOffState || summary.isEmptyState) {
-                    Text(
-                        text = summary.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                } else {
-                    Text(
-                        text = summary.title,
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = summary.dateTime,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
+                val listState = rememberLazyListState()
+                val isActionRowPinned by remember {
+                    derivedStateOf { listState.firstVisibleItemIndex > 0 }
                 }
-                Spacer(Modifier.height(80.dp))
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 6.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    IconButton(onClick = onAddAlarm) {
-                        Icon(Icons.Default.Add, contentDescription = "알람 추가")
+                    item {
+                        Spacer(Modifier.height(100.dp))
+                        if (summary.isOffState || summary.isEmptyState) {
+                            Text(
+                                text = summary.title,
+                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                color = contentColor
+                            )
+                        } else {
+                            Text(
+                                text = summary.title,
+                                style = MaterialTheme.typography.headlineMedium,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                color = contentColor
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = summary.dateTime,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                color = contentColor
+                            )
+                        }
+                        Spacer(Modifier.height(80.dp))
                     }
-                    Box {
-                        IconButton(onClick = { showMoreMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "더보기")
-                        }
-                        DropdownMenu(
-                            expanded = showMoreMenu,
-                            onDismissRequest = { showMoreMenu = false }
+
+                    stickyHeader {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(containerColor)
+                                .padding(top = 8.dp, bottom = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            DropdownMenuItem(
-                                text = { Text("편집") },
-                                onClick = {
-                                    showMoreMenu = false
-                                    viewModel.enterSelectionMode()
+                            Box(modifier = Modifier.weight(1f)) {
+                                if (isActionRowPinned) {
+                                    Text(
+                                        text = "알람",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = contentColor,
+                                        modifier = Modifier.align(Alignment.CenterStart)
+                                    )
                                 }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("정렬") },
-                                onClick = {
-                                    showMoreMenu = false
-                                    showSortMenu = true
+                            }
+                            IconButton(onClick = onAddAlarm) {
+                                Icon(Icons.Default.Add, contentDescription = "알람 추가")
+                            }
+                            Box {
+                                IconButton(onClick = { showMoreMenu = true }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = "더보기")
                                 }
-                            )
+                                DropdownMenu(
+                                    expanded = showMoreMenu,
+                                    onDismissRequest = { showMoreMenu = false },
+                                    shape = RoundedCornerShape(16.dp),
+                                    containerColor = dropdownContainerColor
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("편집", color = dropdownContentColor) },
+                                        onClick = {
+                                            showMoreMenu = false
+                                            viewModel.enterSelectionMode()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("정렬", color = dropdownContentColor) },
+                                        onClick = {
+                                            showMoreMenu = false
+                                            showSortMenu = true
+                                        }
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showSortMenu,
+                                    onDismissRequest = { showSortMenu = false },
+                                    shape = RoundedCornerShape(16.dp),
+                                    containerColor = dropdownContainerColor
+                                ) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "알람 시간 순서",
+                                                color = dropdownContentColor
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            if (uiState.sortOrder == HomeSortOrder.AlarmTime) {
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = dropdownContentColor
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            showSortMenu = false
+                                            viewModel.updateSortOrder(HomeSortOrder.AlarmTime)
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "직접설정한 순서",
+                                                color = dropdownContentColor
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            if (uiState.sortOrder == HomeSortOrder.Manual) {
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = dropdownContentColor
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            showSortMenu = false
+                                            viewModel.updateSortOrder(HomeSortOrder.Manual)
+                                        }
+                                    )
+                                }
+                            }
                         }
-                        DropdownMenu(
-                            expanded = showSortMenu,
-                            onDismissRequest = { showSortMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("알람 시간 순서") },
-                                leadingIcon = {
-                                    if (uiState.sortOrder == HomeSortOrder.AlarmTime) {
-                                        Icon(Icons.Default.Check, contentDescription = null)
-                                    }
+                    }
+
+                    if (uiState.alarms.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 80.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "알림이 없습니다",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        item {
+                            AlarmCardGroup(
+                                alarms = uiState.alarms,
+                                selectedIds = uiState.selectedIds,
+                                selectionMode = uiState.selectionMode,
+                                onTap = { alarm ->
+                                    viewModel.onAlarmTap(alarm.id) { onEditAlarm(alarm.id) }
                                 },
-                                onClick = {
-                                    showSortMenu = false
-                                    viewModel.updateSortOrder(HomeSortOrder.AlarmTime)
-                                }
-                            )
-                            HorizontalDivider()
-                            DropdownMenuItem(
-                                text = { Text("직접설정한 순서") },
-                                leadingIcon = {
-                                    if (uiState.sortOrder == HomeSortOrder.Manual) {
-                                        Icon(Icons.Default.Check, contentDescription = null)
-                                    }
-                                },
-                                onClick = {
-                                    showSortMenu = false
-                                    viewModel.updateSortOrder(HomeSortOrder.Manual)
-                                }
+                                onLongPress = { alarm -> viewModel.onAlarmLongPress(alarm.id) },
+                                onToggle = { alarm -> viewModel.toggleEnabled(alarm) }
                             )
                         }
                     }
@@ -215,39 +345,32 @@ fun HomeScreen(
                 ) {
                     Checkbox(
                         checked = uiState.selectedIds.size == uiState.alarms.size && uiState.alarms.isNotEmpty(),
-                        onCheckedChange = { viewModel.toggleSelectAll() }
+                        onCheckedChange = { viewModel.toggleSelectAll() },
+                        colors = checkboxColors
                     )
-                    Text("전체")
+                    Text(
+                        "전체",
+                        color = contentColor
+                    )
                 }
             }
 
-            if (uiState.alarms.isEmpty() && !uiState.selectionMode) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "알림이 없습니다",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
+            if (uiState.selectionMode) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(uiState.alarms, key = { it.id }) { alarm ->
-                        AlarmCard(
-                            alarm = alarm,
-                            selected = alarm.id in uiState.selectedIds,
+                    item {
+                        AlarmCardGroup(
+                            alarms = uiState.alarms,
+                            selectedIds = uiState.selectedIds,
                             selectionMode = uiState.selectionMode,
-                            onTap = {
+                            onTap = { alarm ->
                                 viewModel.onAlarmTap(alarm.id) { onEditAlarm(alarm.id) }
                             },
-                            onLongPress = { viewModel.onAlarmLongPress(alarm.id) },
-                            onToggle = { viewModel.toggleEnabled(alarm) }
+                            onLongPress = { alarm -> viewModel.onAlarmLongPress(alarm.id) },
+                            onToggle = { alarm -> viewModel.toggleEnabled(alarm) }
                         )
                     }
                 }
@@ -258,86 +381,154 @@ fun HomeScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun AlarmCard(
+private fun AlarmCardGroup(
+    alarms: List<Alarm>,
+    selectedIds: Set<String>,
+    selectionMode: Boolean,
+    onTap: (Alarm) -> Unit,
+    onLongPress: (Alarm) -> Unit,
+    onToggle: (Alarm) -> Unit
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val containerColor = if (isDarkTheme) Color.BackgroundGray else Color.White
+    val separatorColor = if (isDarkTheme) Color.Black else Color.Background
+
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = containerColor
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+        ) {
+            alarms.forEachIndexed { index, alarm ->
+                AlarmRow(
+                    alarm = alarm,
+                    selected = alarm.id in selectedIds,
+                    selectionMode = selectionMode,
+                    isDarkTheme = isDarkTheme,
+                    onTap = { onTap(alarm) },
+                    onLongPress = { onLongPress(alarm) },
+                    onToggle = { onToggle(alarm) }
+                )
+                if (index != alarms.lastIndex) {
+                    HorizontalDivider(
+                        color = separatorColor,
+                        thickness = 1.dp,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun AlarmRow(
     alarm: Alarm,
     selected: Boolean,
     selectionMode: Boolean,
+    isDarkTheme: Boolean,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
     onToggle: () -> Unit
 ) {
     val dateLabel = rememberAlarmDateLabel(alarm)
-    val containerColor = when {
-        selected -> MaterialTheme.colorScheme.tertiaryContainer
-        alarm.isEnabled -> AccentSurfaceColor
-        else -> MaterialTheme.colorScheme.surfaceContainer
+    val activeTextColor = if (isDarkTheme) Color.White else Color.Black
+    val inactiveTextColor = if (isDarkTheme) {
+        Color.White.copy(alpha = 0.42f)
+    } else {
+        Color.Black.copy(alpha = 0.32f)
     }
+    val selectedTextColor = MaterialTheme.colorScheme.primary
     val contentColor = when {
-        selected -> MaterialTheme.colorScheme.onTertiaryContainer
-        alarm.isEnabled -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+        selected -> selectedTextColor
+        alarm.isEnabled -> activeTextColor
+        else -> inactiveTextColor
     }
+    val switchColors = SwitchDefaults.colors(
+        checkedThumbColor = Color.White,
+        checkedTrackColor = AccentColor,
+        checkedBorderColor = AccentColor,
+        uncheckedThumbColor = Color.LightGray,
+        uncheckedTrackColor = Color.White,
+        uncheckedBorderColor = Color.LightGray,
+    )
+    val uncheckedBoxBorderColor = if (isDarkTheme) Color.White else Color.LightGray
+    val checkboxColors = CheckboxColors(
+        checkedCheckmarkColor = Color.White,
+        uncheckedCheckmarkColor = Color.Transparent,
+        checkedBoxColor = AccentColor,
+        uncheckedBoxColor = Color.Transparent,
+        disabledCheckedBoxColor = Color.Transparent,
+        disabledUncheckedBoxColor = Color.Transparent,
+        disabledIndeterminateBoxColor = Color.Transparent,
+        checkedBorderColor = AccentColor,
+        uncheckedBorderColor = uncheckedBoxBorderColor,
+        disabledBorderColor = Color.Transparent,
+        disabledUncheckedBorderColor = Color.Transparent,
+        disabledIndeterminateBorderColor = Color.Transparent
+    )
 
-    ElevatedCard(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = onTap, onLongClick = onLongPress),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = containerColor
-        )
+            .combinedClickable(onClick = onTap, onLongClick = onLongPress)
+            .padding(horizontal = 16.dp, vertical = 18.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (selectionMode) {
-                Checkbox(checked = selected, onCheckedChange = { onTap() })
-                Spacer(Modifier.width(8.dp))
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                if (!alarm.label.isBlank()) {
-                    Text(
-                        text = alarm.label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = contentColor
-                    )
-                    Spacer(Modifier.height(20.dp))
-                }
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = alarm.amPm,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = contentColor,
-                        textAlign = TextAlign.End
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = alarm.twelveHourTimeString,
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.Light,
-                        color = contentColor
-                    )
-                }
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        if (selectionMode) {
+            Checkbox(
+                checked = selected, onCheckedChange = { onTap() },
+                colors = checkboxColors
+            )
+            Spacer(Modifier.width(8.dp))
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            if (!alarm.label.isBlank()) {
                 Text(
-                    text = dateLabel,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
+                    text = alarm.label,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = contentColor
                 )
-                if (!selectionMode) {
-                    Spacer(Modifier.width(10.dp))
-                    androidx.compose.material3.Switch(
-                        checked = alarm.isEnabled,
-                        onCheckedChange = { onToggle() }
-                    )
-                }
+                Spacer(Modifier.height(20.dp))
+            }
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    text = alarm.amPm,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = contentColor,
+                    textAlign = TextAlign.End
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = alarm.twelveHourTimeString,
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Light,
+                    color = contentColor
+                )
+            }
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = dateLabel,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = contentColor
+            )
+            if (!selectionMode) {
+                Spacer(Modifier.width(10.dp))
+                Switch(
+                    checked = alarm.isEnabled,
+                    onCheckedChange = { onToggle() },
+                    colors = switchColors
+                )
             }
         }
     }
@@ -375,7 +566,7 @@ private fun rememberRecentAlarmSummary(alarms: List<Alarm>): RecentAlarmSummary 
     val remain = when {
         diffMinute == 0 -> "곧 알람이 울립니다"
         diffMillis >= 24 * 60 * 60 * 1000L -> "${
-            kotlin.math.ceil(diffMillis / (24 * 60 * 60 * 1000.0)).toInt()
+            ceil(diffMillis / (24 * 60 * 60 * 1000.0)).toInt()
         }일 후에 알람이 울립니다"
 
         hours == 0 -> "${mins}분 후에 알람이 울립니다"

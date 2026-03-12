@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
@@ -38,7 +39,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -48,11 +48,11 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -71,6 +71,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -79,11 +80,15 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.miram.shared.model.RingDuration
 import com.example.miram.shared.model.Weekday
+import com.example.miram.shared.style.AccentColor
+import com.example.miram.shared.style.Background
+import com.example.miram.shared.style.BackgroundGray
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
 import kotlinx.coroutines.launch
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,10 +97,14 @@ fun AlarmDetailScreen(
     viewModel: AlarmDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     var showDiscardDialog by remember { mutableStateOf(false) }
     val latestOnBack by rememberUpdatedState(onBack)
     val latestSave by rememberUpdatedState(viewModel::save)
+    val isDarkTheme = isSystemInDarkTheme()
+    val screenBackground = if (isDarkTheme) Color.Black else Color.Background
+    val cardBackground = if (isDarkTheme) Color.BackgroundGray else Color.White
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) onBack()
@@ -136,18 +145,21 @@ fun AlarmDetailScreen(
     }
 
     Scaffold(
-        containerColor = Color(0xFFF5F5F5),
+        containerColor = screenBackground,
         bottomBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .background(Color(0xFFF5F5F5)),
+                    .background(screenBackground),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = contentColor
+                    ),
                     onClick = requestBackNavigation,
                     modifier = Modifier
                         .weight(1f)
@@ -155,18 +167,21 @@ fun AlarmDetailScreen(
                 ) {
                     Text(
                         "취소", fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = contentColor,
                         modifier = Modifier.background(Color.Transparent)
                     )
                 }
                 Button(
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = contentColor
+                    ),
                     onClick = { viewModel.save() },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
                         "저장", fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = contentColor,
                         modifier = Modifier.background(Color.Transparent)
                     )
                 }
@@ -177,7 +192,7 @@ fun AlarmDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color(0xFFF5F5F5))
+                .background(screenBackground)
         ) {
             Spacer(Modifier.height(8.dp))
             TimePickerSection(
@@ -194,7 +209,7 @@ fun AlarmDetailScreen(
                     .fillMaxWidth()
                     .weight(1f),
                 colors = CardDefaults.elevatedCardColors(
-                    containerColor = Color.White
+                    containerColor = cardBackground
                 )
             ) {
                 Column(
@@ -224,8 +239,7 @@ fun AlarmDetailScreen(
                         enabled = uiState.soundEnabled,
                         onToggle = viewModel::onSoundToggle,
                         onPickRingtone = {
-                            val currentUri = uiState.soundUri.takeIf { it.isNotBlank() }
-                                ?.let { Uri.parse(it) }
+                            val currentUri = uiState.soundUri.takeIf { it.isNotBlank() }?.toUri()
                                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                             val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
                                 putExtra(
@@ -280,7 +294,6 @@ fun AlarmDetailScreen(
                     latestSave()
                 }
                 .create()
-            dialog.setOnDismissListener { showDiscardDialog = false }
             dialog.show()
             onDispose {
                 dialog.setOnDismissListener(null)
@@ -297,7 +310,7 @@ private fun RepeatSection(
     onToggleWeekday: (Weekday) -> Unit,
     onDateSelected: (Long?) -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val today = Calendar.getInstance()
     val tomorrow = (today.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, 1) }
     val formatter = remember { SimpleDateFormat("M월 d일 (E)", Locale.KOREAN) }
@@ -366,7 +379,7 @@ private fun RepeatSection(
                 FilterChip(
                     selected = weekday in selectedDays,
                     onClick = { onToggleWeekday(weekday) },
-                    label = { Text(weekday.label, textAlign = TextAlign.Center) }
+                    label = { Text(weekday.label, textAlign = TextAlign.Center) },
                 )
             }
         }
@@ -380,13 +393,16 @@ private fun TimePickerSection(
     onHourChange: (Int) -> Unit,
     onMinuteChange: (Int) -> Unit
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val sectionBackground = if (isDarkTheme) Color.Black else Color.Background
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
     val isPm = hour >= 12
     val hour12 = if (hour % 12 == 0) 12 else hour % 12
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF5F5F5)),
+            .background(sectionBackground),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -406,7 +422,8 @@ private fun TimePickerSection(
             ":",
             fontSize = 42.sp,
             fontWeight = FontWeight.Light,
-            modifier = Modifier.padding(horizontal = 6.dp)
+            modifier = Modifier.padding(horizontal = 6.dp),
+            color = contentColor
         )
         Wheel3Picker(
             values = (0..59).map { "%02d".format(it) },
@@ -447,6 +464,8 @@ private fun WheelPicker(
     onSelect: (Int) -> Unit
 ) {
     if (values.isEmpty()) return
+    val isDarkTheme = isSystemInDarkTheme()
+    val wheelBackground = if (isDarkTheme) Color.BackgroundGray else Color.Background
     val safeIndex = selectedIndex.coerceIn(0, values.lastIndex)
     val itemHeight = 104.dp
     val isLooping = values.size > 2
@@ -512,15 +531,16 @@ private fun WheelPicker(
     }
 
     ElevatedCard(
-        modifier = Modifier
-            .width(width)
-            .background(Color(0xFFF5F5F5))
+        modifier = Modifier.width(width),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = wheelBackground
+        )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(312.dp)
-                .background(Color(0xFFF5F5F5))
+                .background(wheelBackground)
                 .clip(MaterialTheme.shapes.large)
         ) {
             Box(
@@ -581,11 +601,13 @@ private fun SoundSettingRow(
     onToggle: (Boolean) -> Unit,
     onPickRingtone: () -> Unit
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val rowBackground = if (isDarkTheme) Color.BackgroundGray else Color.White
     OutlinedCard(onClick = onPickRingtone, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier =
                 Modifier
-                    .background(Color.White)
+                    .background(rowBackground)
                     .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -599,11 +621,15 @@ private fun SoundSettingRow(
                     color = if (enabled) {
                         MaterialTheme.colorScheme.onSurface
                     } else {
-                        Color.Blue
+                        MaterialTheme.colorScheme.onSurfaceVariant
                     }
                 )
             }
-            Switch(checked = enabled, onCheckedChange = onToggle)
+            Switch(
+                checked = enabled,
+                onCheckedChange = onToggle,
+                colors = detailSwitchColors()
+            )
         }
     }
 }
@@ -616,10 +642,12 @@ private fun VibrationSettingRow(
     onModeChange: (String) -> Unit
 ) {
     var openDialog by remember { mutableStateOf(false) }
+    val isDarkTheme = isSystemInDarkTheme()
+    val rowBackground = if (isDarkTheme) Color.BackgroundGray else Color.White
     OutlinedCard(onClick = { openDialog = true }, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .background(Color.White)
+                .background(rowBackground)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -632,11 +660,15 @@ private fun VibrationSettingRow(
                     color = if (enabled) {
                         MaterialTheme.colorScheme.onSurface
                     } else {
-                        Color(0xFFF5F5F5)
+                        MaterialTheme.colorScheme.onSurfaceVariant
                     }
                 )
             }
-            Switch(checked = enabled, onCheckedChange = onToggle)
+            Switch(
+                checked = enabled,
+                onCheckedChange = onToggle,
+                colors = detailSwitchColors()
+            )
         }
     }
     if (openDialog) {
@@ -683,10 +715,12 @@ private fun SnoozeSettingRow(
     onRepeatChange: (Int) -> Unit
 ) {
     var openDialog by remember { mutableStateOf(false) }
+    val isDarkTheme = isSystemInDarkTheme()
+    val rowBackground = if (isDarkTheme) Color.BackgroundGray else Color.White
     OutlinedCard(onClick = { openDialog = true }, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .background(Color.White)
+                .background(rowBackground)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -699,11 +733,15 @@ private fun SnoozeSettingRow(
                     color = if (enabled) {
                         MaterialTheme.colorScheme.onSurface
                     } else {
-                        Color.Blue
+                        MaterialTheme.colorScheme.onSurfaceVariant
                     }
                 )
             }
-            Switch(checked = enabled, onCheckedChange = onToggle)
+            Switch(
+                checked = enabled,
+                onCheckedChange = onToggle,
+                colors = detailSwitchColors()
+            )
         }
     }
     if (openDialog) {
@@ -727,7 +765,7 @@ private fun SnoozeSettingRow(
                                     labelColor = if (enabled && intervalMinutes == m) {
                                         MaterialTheme.colorScheme.onPrimaryContainer
                                     } else {
-                                        Color.Blue
+                                        MaterialTheme.colorScheme.onSurface
                                     }
                                 )
                             )
@@ -748,7 +786,7 @@ private fun SnoozeSettingRow(
                                     labelColor = if (enabled && repeatCount == c) {
                                         MaterialTheme.colorScheme.onPrimaryContainer
                                     } else {
-                                        Color.Blue
+                                        MaterialTheme.colorScheme.onSurface
                                     }
                                 )
                             )
@@ -772,10 +810,12 @@ private fun isSameDate(a: Calendar, b: Calendar): Boolean =
 
 @Composable
 private fun RingDurationSelector(selected: Int, onSelect: (Int) -> Unit) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val containerColor = if (isDarkTheme) Color.BackgroundGray else Color.White
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White, MaterialTheme.shapes.large)
+            .background(containerColor, MaterialTheme.shapes.large)
             .horizontalScroll(rememberScrollState())
             .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -788,11 +828,20 @@ private fun RingDurationSelector(selected: Int, onSelect: (Int) -> Unit) {
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    containerColor = Color.White,
+                    containerColor = containerColor,
                     labelColor = MaterialTheme.colorScheme.onSurface
                 ),
-//                border = if (seconds == selected) null else FilterChipDefaults.filterChipBorder(enabled = true)
             )
         }
     }
 }
+
+@Composable
+private fun detailSwitchColors() = SwitchDefaults.colors(
+    checkedThumbColor = Color.White,
+    checkedTrackColor = AccentColor,
+    checkedBorderColor = AccentColor,
+    uncheckedThumbColor = Color.LightGray,
+    uncheckedTrackColor = Color.White,
+    uncheckedBorderColor = Color.LightGray
+)

@@ -20,6 +20,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -417,16 +418,21 @@ private fun RepeatSection(
             }
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            weekdayOrder.forEach { weekday ->
-                FilterChip(
-                    selected = weekday in selectedDays,
-                    onClick = { onToggleWeekday(weekday) },
-                    label = { Text(weekday.label, textAlign = TextAlign.Center) },
-                )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val spacing = 8.dp
+            val chipWidth = (maxWidth - spacing * 6) / 7
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(spacing),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                weekdayOrder.forEach { weekday ->
+                    FilterChip(
+                        modifier = Modifier.width(chipWidth),
+                        selected = weekday in selectedDays,
+                        onClick = { onToggleWeekday(weekday) },
+                        label = { Text(weekday.label, textAlign = TextAlign.Center) },
+                    )
+                }
             }
         }
     }

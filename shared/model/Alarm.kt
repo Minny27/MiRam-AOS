@@ -46,4 +46,14 @@ data class Alarm(
     val amPm: String get() = if (hour < 12) "AM" else "PM"
 }
 
-fun List<Weekday>.toRepeatDaysString(): String = joinToString(",") { it.value.toString() }
+fun Iterable<Weekday>.toRepeatDaysString(
+    order: List<Weekday>? = null
+): String {
+    val weekdays = if (order == null) {
+        toList()
+    } else {
+        val selected = toSet()
+        order.filter(selected::contains)
+    }
+    return weekdays.joinToString(",") { it.value.toString() }
+}

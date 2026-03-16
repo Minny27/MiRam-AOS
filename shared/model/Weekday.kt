@@ -10,6 +10,8 @@ enum class Weekday(val value: Int, val label: String) {
     SUN(7, "일");
 
     companion object {
+        val storageOrder: List<Weekday> = listOf(SUN, MON, TUE, WED, THU, FRI, SAT)
+
         fun fromValue(value: Int): Weekday? = entries.find { it.value == value }
     }
 }

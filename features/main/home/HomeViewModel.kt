@@ -4,15 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.miram.shared.data.AlarmRepository
 import com.example.miram.shared.model.Alarm
-import com.example.miram.shared.model.Weekday
+import com.example.miram.shared.model.nextTriggerAtMillis
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import javax.inject.Inject
 
 enum class HomeSortOrder {
@@ -37,12 +35,12 @@ class HomeViewModel @Inject constructor(
     private val selectionMode = MutableStateFlow(false)
     private val sortOrder = MutableStateFlow(HomeSortOrder.AlarmTime)
 
-    val uiState = repository.getAllAlarms()
-        .combine(selectedIds) { alarms, selected -> alarms to selected }
-        .combine(selectionMode) { (alarms, selected), isSelectionMode ->
-            Triple(alarms, selected, isSelectionMode)
-        }
-        .combine(sortOrder) { (alarms, selected, isSelectionMode), currentSortOrder ->
+    val uiState = combine(
+        repository.getAllAlarms(),
+        selectedIds,
+        selectionMode,
+        sortOrder
+    ) { alarms, selected, isSelectionMode, currentSortOrder ->
             HomeUiState(
                 alarms = alarms.sortedFor(currentSortOrder),
                 sortOrder = currentSortOrder,
@@ -55,10 +53,6 @@ class HomeViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = HomeUiState(isLoading = true)
         )
-
-    fun deleteAlarm(alarm: Alarm) {
-        viewModelScope.launch { repository.deleteAlarm(alarm) }
-    }
 
     fun toggleEnabled(alarm: Alarm) {
         viewModelScope.launch { repository.setEnabled(alarm, !alarm.isEnabled) }
@@ -74,10 +68,8 @@ class HomeViewModel @Inject constructor(
             onEdit()
             return
         }
-        selectedIds.value = if (alarmId in selectedIds.value) {
-            selectedIds.value - alarmId
-        } else {
-            selectedIds.value + alarmId
+        updateSelectedIds { selected ->
+            if (alarmId in selected) selected - alarmId else selected + alarmId
         }
     }
 
@@ -111,20 +103,24 @@ class HomeViewModel @Inject constructor(
     }
 
     fun enableSelected() {
-        val selected = selectedIds.value
-        viewModelScope.launch {
-            uiState.value.alarms.filter { it.id in selected }.forEach { alarm ->
-                repository.setEnabled(alarm, true)
-            }
-            exitSelectionMode()
-        }
+        applyToSelectedAlarms { alarm -> repository.setEnabled(alarm, true) }
     }
 
     fun deleteSelected() {
+        applyToSelectedAlarms(repository::deleteAlarm)
+    }
+
+    private fun updateSelectedIds(transform: (Set<String>) -> Set<String>) {
+        selectedIds.value = transform(selectedIds.value)
+    }
+
+    private fun applyToSelectedAlarms(action: suspend (Alarm) -> Unit) {
         val selected = selectedIds.value
         viewModelScope.launch {
-            uiState.value.alarms.filter { it.id in selected }.forEach { alarm ->
-                repository.deleteAlarm(alarm)
+            for (alarm in uiState.value.alarms) {
+                if (alarm.id in selected) {
+                    action(alarm)
+                }
             }
             exitSelectionMode()
         }
@@ -137,59 +133,8 @@ private fun List<Alarm>.sortedFor(sortOrder: HomeSortOrder): List<Alarm> = when 
 }
 
 private fun List<Alarm>.sortedForClockOrder(): List<Alarm> {
-    val now = Calendar.getInstance()
     return sortedWith(
-        compareBy<Alarm> { alarm -> nextTriggerAtMillis(alarm, now) ?: Long.MAX_VALUE }
+        compareBy<Alarm> { alarm -> alarm.nextTriggerAtMillis() }
             .thenBy { it.createdAt }
     )
-}
-
-private fun nextTriggerAtMillis(alarm: Alarm, now: Calendar = Calendar.getInstance()): Long? {
-    fun fromBase(base: Long): Long {
-        val cal = Calendar.getInstance().apply { timeInMillis = base }
-        cal.set(Calendar.HOUR_OF_DAY, alarm.hour)
-        cal.set(Calendar.MINUTE, alarm.minute)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        while (cal.timeInMillis <= now.timeInMillis) {
-            cal.add(Calendar.DAY_OF_YEAR, 1)
-        }
-        return cal.timeInMillis
-    }
-
-    if (alarm.specificDateMillis != null) return fromBase(alarm.specificDateMillis)
-
-    val repeatDays = alarm.repeatWeekdays().toSet()
-    if (repeatDays.isNotEmpty()) {
-        val map = mapOf(
-            Weekday.SUN to Calendar.SUNDAY,
-            Weekday.MON to Calendar.MONDAY,
-            Weekday.TUE to Calendar.TUESDAY,
-            Weekday.WED to Calendar.WEDNESDAY,
-            Weekday.THU to Calendar.THURSDAY,
-            Weekday.FRI to Calendar.FRIDAY,
-            Weekday.SAT to Calendar.SATURDAY
-        )
-        return repeatDays.mapNotNull { weekday ->
-            val targetDow = map[weekday] ?: return@mapNotNull null
-            Calendar.getInstance().apply {
-                timeInMillis = now.timeInMillis
-                set(Calendar.DAY_OF_WEEK, targetDow)
-                set(Calendar.HOUR_OF_DAY, alarm.hour)
-                set(Calendar.MINUTE, alarm.minute)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-                if (timeInMillis <= now.timeInMillis) add(Calendar.WEEK_OF_YEAR, 1)
-            }.timeInMillis
-        }.minOrNull()
-    }
-
-    return Calendar.getInstance().apply {
-        timeInMillis = now.timeInMillis
-        set(Calendar.HOUR_OF_DAY, alarm.hour)
-        set(Calendar.MINUTE, alarm.minute)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-        if (timeInMillis <= now.timeInMillis) add(Calendar.DAY_OF_YEAR, 1)
-    }.timeInMillis
 }

@@ -15,15 +15,35 @@ import com.example.miram.features.main.alarmringing.AlarmRingingScreen
 import com.example.miram.features.main.home.HomeScreen
 import com.example.miram.shared.alarm.AlarmStateHolder
 
-sealed class MainDestination(val route: String) {
-    data object Home : MainDestination("home")
-    data object AlarmAdd : MainDestination("alarm/add")
-    data class AlarmEdit(val alarmId: String) : MainDestination("alarm/edit/{alarmId}") {
-        companion object { const val ROUTE = "alarm/edit/{alarmId}" }
+sealed interface MainDestination {
+    val route: String
+
+    data object Home : MainDestination {
+        override val route = "home"
     }
-    data class AlarmRinging(val alarmId: String, val label: String, val ringDuration: Int) :
-        MainDestination("alarm/ringing/{alarmId}?label={label}&ringDuration={ringDuration}") {
-        companion object { const val ROUTE = "alarm/ringing/{alarmId}?label={label}&ringDuration={ringDuration}" }
+
+    data object AlarmAdd : MainDestination {
+        override val route = "alarm/add"
+    }
+
+    data object AlarmEdit : MainDestination {
+        const val alarmIdArg = "alarmId"
+        override val route = "alarm/edit/{$alarmIdArg}"
+
+        fun createRoute(alarmId: String): String = "alarm/edit/$alarmId"
+    }
+
+    data object AlarmRinging : MainDestination {
+        const val alarmIdArg = "alarmId"
+        const val labelArg = "label"
+        const val ringDurationArg = "ringDuration"
+        override val route =
+            "alarm/ringing/{$alarmIdArg}?$labelArg={$labelArg}&$ringDurationArg={$ringDurationArg}"
+
+        fun createRoute(alarm: AlarmStateHolder.RingingAlarm): String {
+            val encodedLabel = Uri.encode(alarm.label)
+            return "alarm/ringing/${alarm.alarmId}?label=$encodedLabel&ringDuration=${alarm.ringDuration}"
+        }
     }
 }
 
@@ -35,10 +55,7 @@ fun MainRoute() {
     val ringingAlarm by AlarmStateHolder.ringingAlarm.collectAsState()
     LaunchedEffect(ringingAlarm) {
         val alarm = ringingAlarm ?: return@LaunchedEffect
-        val encodedLabel = Uri.encode(alarm.label)
-        navController.navigate(
-            "alarm/ringing/${alarm.alarmId}?label=$encodedLabel&ringDuration=${alarm.ringDuration}"
-        ) {
+        navController.navigate(MainDestination.AlarmRinging.createRoute(alarm)) {
             launchSingleTop = true
         }
     }
@@ -47,7 +64,7 @@ fun MainRoute() {
         composable(MainDestination.Home.route) {
             HomeScreen(
                 onAddAlarm = { navController.navigate(MainDestination.AlarmAdd.route) },
-                onEditAlarm = { id -> navController.navigate("alarm/edit/$id") }
+                onEditAlarm = { id -> navController.navigate(MainDestination.AlarmEdit.createRoute(id)) }
             )
         }
 
@@ -56,23 +73,27 @@ fun MainRoute() {
         }
 
         composable(
-            route = MainDestination.AlarmEdit.ROUTE,
-            arguments = listOf(navArgument("alarmId") { type = NavType.StringType })
+            route = MainDestination.AlarmEdit.route,
+            arguments = listOf(navArgument(MainDestination.AlarmEdit.alarmIdArg) { type = NavType.StringType })
         ) {
             AlarmDetailScreen(onBack = { navController.popBackStack() })
         }
 
         composable(
-            route = MainDestination.AlarmRinging.ROUTE,
+            route = MainDestination.AlarmRinging.route,
             arguments = listOf(
-                navArgument("alarmId") { type = NavType.StringType },
-                navArgument("label") { type = NavType.StringType; defaultValue = "" },
-                navArgument("ringDuration") { type = NavType.IntType; defaultValue = 60 }
+                navArgument(MainDestination.AlarmRinging.alarmIdArg) { type = NavType.StringType },
+                navArgument(MainDestination.AlarmRinging.labelArg) { type = NavType.StringType; defaultValue = "" },
+                navArgument(MainDestination.AlarmRinging.ringDurationArg) { type = NavType.IntType; defaultValue = 60 }
             )
         ) { backStackEntry ->
-            val alarmId = backStackEntry.arguments?.getString("alarmId") ?: ""
-            val label = backStackEntry.arguments?.getString("label")?.let(Uri::decode) ?: ""
-            val ringDuration = backStackEntry.arguments?.getInt("ringDuration") ?: 60
+            val alarmId =
+                backStackEntry.arguments?.getString(MainDestination.AlarmRinging.alarmIdArg) ?: ""
+            val label =
+                backStackEntry.arguments?.getString(MainDestination.AlarmRinging.labelArg)?.let(Uri::decode)
+                    ?: ""
+            val ringDuration =
+                backStackEntry.arguments?.getInt(MainDestination.AlarmRinging.ringDurationArg) ?: 60
             AlarmRingingScreen(
                 alarmId = alarmId,
                 label = label,

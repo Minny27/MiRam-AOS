@@ -11,13 +11,14 @@ import com.example.miram.shared.model.Alarm
 import com.example.miram.shared.model.RingDuration
 import com.example.miram.shared.model.Weekday
 import com.example.miram.shared.model.toRepeatDaysString
+import com.example.miram.shared.model.normalizeSpecificDateMillis
+import com.example.miram.shared.model.wasSpecificDateAdjusted
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import javax.inject.Inject
 
 data class AlarmDetailUiState(
@@ -153,12 +154,12 @@ class AlarmDetailViewModel @Inject constructor(
     fun save() {
         viewModelScope.launch {
             val s = _uiState.value
-            val (normalizedDateMillis, wasAdjustedToTomorrow) = normalizeSpecificDateMillis(
+            val normalizedDateMillis = normalizeSpecificDateMillis(
                 selectedDateMillis = s.selectedDateMillis,
                 hour = s.hour,
                 minute = s.minute
             )
-            if (wasAdjustedToTomorrow) {
+            if (wasSpecificDateAdjusted(s.selectedDateMillis, s.hour, s.minute)) {
                 updateState { copy(selectedDateMillis = normalizedDateMillis) }
                 Toast.makeText(
                     context,
@@ -167,20 +168,11 @@ class AlarmDetailViewModel @Inject constructor(
                 ).show()
                 return@launch
             }
-            val weekdayOrder = listOf(
-                Weekday.SUN,
-                Weekday.MON,
-                Weekday.TUE,
-                Weekday.WED,
-                Weekday.THU,
-                Weekday.FRI,
-                Weekday.SAT
-            )
             val alarm = Alarm(
                 id = alarmId ?: java.util.UUID.randomUUID().toString(),
                 hour = s.hour,
                 minute = s.minute,
-                repeatDays = weekdayOrder.filter { it in s.selectedDays }.toRepeatDaysString(),
+                repeatDays = s.selectedDays.toRepeatDaysString(order = Weekday.storageOrder),
                 label = s.label,
                 isEnabled = true,
                 ringDuration = RingDuration.normalize(s.ringDuration),
@@ -203,36 +195,6 @@ class AlarmDetailViewModel @Inject constructor(
                 hasUnsavedChanges = false,
                 isSaved = true
             )
-        }
-    }
-
-    private fun normalizeSpecificDateMillis(
-        selectedDateMillis: Long?,
-        hour: Int,
-        minute: Int
-    ): Pair<Long?, Boolean> {
-        if (selectedDateMillis == null) return null to false
-        val now = Calendar.getInstance()
-        val cal = Calendar.getInstance().apply {
-            timeInMillis = selectedDateMillis
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        if (cal.timeInMillis > now.timeInMillis) return cal.timeInMillis to false
-        while (cal.timeInMillis <= now.timeInMillis) {
-            cal.add(Calendar.DAY_OF_YEAR, 1)
-        }
-        return cal.timeInMillis to true
-    }
-
-    fun deleteAlarm() {
-        val id = alarmId ?: return
-        viewModelScope.launch {
-            val alarm = repository.getAlarmById(id) ?: return@launch
-            repository.deleteAlarm(alarm)
-            _uiState.value = _uiState.value.copy(isSaved = true)
         }
     }
 

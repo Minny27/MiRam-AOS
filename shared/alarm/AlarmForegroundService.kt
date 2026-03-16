@@ -21,21 +21,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class AlarmForegroundService : Service() {
-    private data class ActiveAlarm(
-        val alarmId: String,
-        val label: String,
-        val hour: Int,
-        val minute: Int,
-        val ringDuration: Int,
-        val soundUri: String,
-        val soundEnabled: Boolean,
-        val vibrateEnabled: Boolean,
-        val vibrationMode: String,
-        val snoozeEnabled: Boolean,
-        val snoozeIntervalMinutes: Int,
-        val snoozeRepeatCount: Int
-    )
-
     @Inject lateinit var scheduler: AlarmScheduler
 
     private var mediaPlayer: MediaPlayer? = null
@@ -43,7 +28,7 @@ class AlarmForegroundService : Service() {
     private var stopRunnable: Runnable? = null
     private var audioFocusRequest: AudioFocusRequest? = null
     private var vibrator: Vibrator? = null
-    private var activeAlarm: ActiveAlarm? = null
+    private var activeAlarm: AlarmPayload? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -53,33 +38,20 @@ class AlarmForegroundService : Service() {
             return START_NOT_STICKY
         }
         if (intent?.action == ACTION_SNOOZE) {
-            intent.toActiveAlarm()?.let(::scheduleSnooze)
+            intent?.let(AlarmPayload.Companion::fromIntent)?.let(::scheduleSnooze)
             stopAlarm()
             return START_NOT_STICKY
         }
 
-        val currentAlarm = intent?.toActiveAlarm() ?: return START_NOT_STICKY
+        val currentAlarm = intent?.let(AlarmPayload.Companion::fromIntent) ?: return START_NOT_STICKY
         activeAlarm = currentAlarm
 
         // UI에 알람 발화 상태 전달 (포그라운드·백그라운드 모두 처리)
         AlarmStateHolder.startRinging(currentAlarm.alarmId, currentAlarm.label, currentAlarm.ringDuration)
 
-        val timeText = String.format("%02d:%02d", currentAlarm.hour, currentAlarm.minute)
         val notification = AlarmNotificationHelper.buildAlarmNotification(
             context = this,
-            label = currentAlarm.label,
-            alarmId = currentAlarm.alarmId,
-            timeText = timeText,
-            hour = currentAlarm.hour,
-            minute = currentAlarm.minute,
-            ringDuration = currentAlarm.ringDuration,
-            soundUri = currentAlarm.soundUri,
-            soundEnabled = currentAlarm.soundEnabled,
-            vibrateEnabled = currentAlarm.vibrateEnabled,
-            vibrationMode = currentAlarm.vibrationMode,
-            snoozeEnabled = currentAlarm.snoozeEnabled,
-            snoozeIntervalMinutes = currentAlarm.snoozeIntervalMinutes,
-            snoozeRepeatCount = currentAlarm.snoozeRepeatCount
+            alarm = currentAlarm
         )
         startForeground(AlarmNotificationHelper.NOTIFICATION_ID, notification)
 
@@ -97,22 +69,9 @@ class AlarmForegroundService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun scheduleSnooze(alarm: ActiveAlarm) {
+    private fun scheduleSnooze(alarm: AlarmPayload) {
         if (!alarm.snoozeEnabled || alarm.snoozeRepeatCount <= 0) return
-        scheduler.scheduleSnooze(
-            alarmId = alarm.alarmId,
-            label = alarm.label,
-            hour = alarm.hour,
-            minute = alarm.minute,
-            ringDuration = alarm.ringDuration,
-            soundUri = alarm.soundUri,
-            soundEnabled = alarm.soundEnabled,
-            vibrateEnabled = alarm.vibrateEnabled,
-            vibrationMode = alarm.vibrationMode,
-            snoozeEnabled = alarm.snoozeEnabled,
-            snoozeIntervalMinutes = alarm.snoozeIntervalMinutes,
-            snoozeRepeatCount = alarm.snoozeRepeatCount - 1
-        )
+        scheduler.scheduleSnooze(alarm.copy(snoozeRepeatCount = alarm.snoozeRepeatCount - 1))
     }
 
     private fun requestAudioFocus() {
@@ -224,22 +183,5 @@ class AlarmForegroundService : Service() {
     companion object {
         const val ACTION_STOP = "com.example.miram.ACTION_ALARM_STOP"
         const val ACTION_SNOOZE = "com.example.miram.ACTION_ALARM_SNOOZE"
-    }
-
-    private fun Intent.toActiveAlarm(): ActiveAlarm {
-        return ActiveAlarm(
-            alarmId = getStringExtra(AlarmReceiver.EXTRA_ALARM_ID) ?: "",
-            label = getStringExtra(AlarmReceiver.EXTRA_ALARM_LABEL) ?: "",
-            hour = getIntExtra(AlarmReceiver.EXTRA_ALARM_HOUR, 0),
-            minute = getIntExtra(AlarmReceiver.EXTRA_ALARM_MINUTE, 0),
-            ringDuration = getIntExtra(AlarmReceiver.EXTRA_RING_DURATION, 60),
-            soundUri = getStringExtra(AlarmReceiver.EXTRA_SOUND_URI) ?: "",
-            soundEnabled = getBooleanExtra(AlarmReceiver.EXTRA_SOUND_ENABLED, true),
-            vibrateEnabled = getBooleanExtra(AlarmReceiver.EXTRA_VIBRATE_ENABLED, true),
-            vibrationMode = getStringExtra(AlarmReceiver.EXTRA_VIBRATION_MODE) ?: "Basic call",
-            snoozeEnabled = getBooleanExtra(AlarmReceiver.EXTRA_SNOOZE_ENABLED, true),
-            snoozeIntervalMinutes = getIntExtra(AlarmReceiver.EXTRA_SNOOZE_INTERVAL_MIN, 5),
-            snoozeRepeatCount = getIntExtra(AlarmReceiver.EXTRA_SNOOZE_REPEAT_COUNT, 3)
-        )
     }
 }

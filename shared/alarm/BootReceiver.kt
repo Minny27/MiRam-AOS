@@ -19,10 +19,15 @@ class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        val pendingResult = goAsync()
 
         CoroutineScope(Dispatchers.IO).launch {
-            val alarms = repository.getAllAlarms().first()
-            alarms.filter { it.isEnabled }.forEach { scheduler.schedule(it) }
+            try {
+                val alarms = repository.getAllAlarms().first()
+                alarms.filter { it.isEnabled }.forEach { scheduler.schedule(it) }
+            } finally {
+                pendingResult.finish()
+            }
         }
     }
 }

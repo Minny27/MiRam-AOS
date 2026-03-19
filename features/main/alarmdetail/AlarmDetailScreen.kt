@@ -1,14 +1,12 @@
 package com.example.miram.features.main.alarmdetail
 
 import android.app.Activity
-import android.app.AlarmManager
 import android.app.AlertDialog as PlatformAlertDialog
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
-import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -81,6 +79,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.miram.shared.alarm.AlarmRuntimeRequirements
 import com.example.miram.shared.model.RingDuration
 import com.example.miram.shared.model.Weekday
 import com.example.miram.shared.style.AccentColor
@@ -103,6 +102,7 @@ fun AlarmDetailScreen(
     val context = LocalContext.current
     var showDiscardDialog by remember { mutableStateOf(false) }
     var showExactAlarmPermissionDialog by remember { mutableStateOf(false) }
+    var showBatteryOptimizationDialog by remember { mutableStateOf(false) }
     val latestOnBack by rememberUpdatedState(onBack)
     val latestSave by rememberUpdatedState(viewModel::save)
     val isDarkTheme = isSystemInDarkTheme()
@@ -110,12 +110,18 @@ fun AlarmDetailScreen(
     val cardBackground = if (isDarkTheme) Color.BackgroundGray else Color.White
     val contentColor = if (isDarkTheme) Color.White else Color.Black
 
-    fun requiresExactAlarmPermission(): Boolean {
-        if (Build.VERSION.SDK_INT !in Build.VERSION_CODES.S..Build.VERSION_CODES.S_V2) {
-            return false
+    fun completeSaveIfReady() {
+        when {
+            AlarmRuntimeRequirements.needsExactAlarmPermission(context) -> {
+                showExactAlarmPermissionDialog = true
+            }
+
+            AlarmRuntimeRequirements.needsBatteryOptimizationExemption(context) -> {
+                showBatteryOptimizationDialog = true
+            }
+
+            else -> latestSave()
         }
-        val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return false
-        return !alarmManager.canScheduleExactAlarms()
     }
 
     LaunchedEffect(uiState.isSaved) {
@@ -156,6 +162,20 @@ fun AlarmDetailScreen(
         }
     }
 
+    val exactAlarmPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        completeSaveIfReady()
+    }
+
+    val batteryOptimizationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (!AlarmRuntimeRequirements.needsBatteryOptimizationExemption(context)) {
+            latestSave()
+        }
+    }
+
     Scaffold(
         containerColor = screenBackground,
         bottomBar = {
@@ -189,11 +209,7 @@ fun AlarmDetailScreen(
                         contentColor = contentColor
                     ),
                     onClick = {
-                        if (requiresExactAlarmPermission()) {
-                            showExactAlarmPermissionDialog = true
-                        } else {
-                            viewModel.save()
-                        }
+                        completeSaveIfReady()
                     },
                     modifier = Modifier.weight(1f)
                 ) {
@@ -325,16 +341,14 @@ fun AlarmDetailScreen(
             onDismissRequest = { showExactAlarmPermissionDialog = false },
             title = { Text("정확한 알람 권한 필요") },
             text = {
-                Text("Android 12에서는 알람을 정확한 시간에 울리려면 시스템 설정에서 정확한 알람 권한을 허용해야 합니다.")
+                Text("정확한 시간에 알람을 울리려면 시스템 설정에서 정확한 알람 권한을 허용해야 합니다.")
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showExactAlarmPermissionDialog = false
-                        context.startActivity(
-                            Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                                data = Uri.parse("package:${context.packageName}")
-                            }
+                        exactAlarmPermissionLauncher.launch(
+                            AlarmRuntimeRequirements.exactAlarmSettingsIntent(context)
                         )
                     }
                 ) {
@@ -343,6 +357,38 @@ fun AlarmDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showExactAlarmPermissionDialog = false }) {
+                    Text("닫기")
+                }
+            }
+        )
+    }
+
+    if (showBatteryOptimizationDialog) {
+        AlertDialog(
+            onDismissRequest = { showBatteryOptimizationDialog = false },
+            title = { Text("배터리 최적화 제외 필요") },
+            text = {
+                Text("배터리 최적화가 켜져 있으면 백그라운드에서 알람이 지연되거나 소리가 막힐 수 있습니다. 정확한 알람을 위해 이 앱을 최적화 대상에서 제외하세요.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBatteryOptimizationDialog = false
+                        val intent = AlarmRuntimeRequirements.batteryOptimizationSettingsIntent(context)
+                        val fallbackIntent = AlarmRuntimeRequirements.batteryOptimizationFallbackIntent()
+                        val launcherIntent = if (intent.resolveActivity(context.packageManager) != null) {
+                            intent
+                        } else {
+                            fallbackIntent
+                        }
+                        batteryOptimizationLauncher.launch(launcherIntent)
+                    }
+                ) {
+                    Text("설정으로 이동")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatteryOptimizationDialog = false }) {
                     Text("닫기")
                 }
             }

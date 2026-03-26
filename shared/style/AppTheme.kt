@@ -1,4 +1,4 @@
-package com.example.miram.shared.style
+package com.seungmin.miram.shared.style
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

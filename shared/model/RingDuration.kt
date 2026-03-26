@@ -1,4 +1,4 @@
-package com.example.miram.shared.model
+package com.seungmin.miram.shared.model
 
 object RingDuration {
     /** 0초 = 계속 울림, 이후 5초~30초(5초 단위), 10초 단위로 1분까지 */

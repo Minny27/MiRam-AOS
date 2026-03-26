@@ -1,10 +1,10 @@
-package com.example.miram.features.main.alarmringing
+package com.seungmin.miram.features.main.alarmringing
 
 import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.miram.shared.alarm.AlarmForegroundService
+import com.seungmin.miram.shared.alarm.AlarmForegroundService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -24,7 +24,7 @@ data class AlarmRingingUiState(
         get() = if (totalSeconds > 0) remainingSeconds.toFloat() / totalSeconds else 0f
 
     val remainingLabel: String
-        get() = com.example.miram.shared.model.RingDuration.label(remainingSeconds)
+        get() = com.seungmin.miram.shared.model.RingDuration.label(remainingSeconds)
 }
 
 @HiltViewModel

@@ -1,10 +1,10 @@
-package com.example.miram.features.main.home
+package com.seungmin.miram.features.main.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.miram.shared.data.AlarmRepository
-import com.example.miram.shared.model.Alarm
-import com.example.miram.shared.model.nextTriggerAtMillis
+import com.seungmin.miram.shared.data.AlarmRepository
+import com.seungmin.miram.shared.model.Alarm
+import com.seungmin.miram.shared.model.nextTriggerAtMillis
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow

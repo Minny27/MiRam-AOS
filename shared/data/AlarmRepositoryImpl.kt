@@ -1,8 +1,8 @@
-package com.example.miram.shared.data
+package com.seungmin.miram.shared.data
 
-import com.example.miram.shared.alarm.AlarmScheduler
-import com.example.miram.shared.model.Alarm
-import com.example.miram.shared.model.withNormalizedSpecificDate
+import com.seungmin.miram.shared.alarm.AlarmScheduler
+import com.seungmin.miram.shared.model.Alarm
+import com.seungmin.miram.shared.model.withNormalizedSpecificDate
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 

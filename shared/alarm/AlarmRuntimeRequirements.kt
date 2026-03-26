@@ -1,4 +1,4 @@
-package com.example.miram.shared.alarm
+package com.seungmin.miram.shared.alarm
 
 import android.app.AlarmManager
 import android.app.NotificationManager

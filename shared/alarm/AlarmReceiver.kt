@@ -1,4 +1,4 @@
-package com.example.miram.shared.alarm
+package com.seungmin.miram.shared.alarm
 
 import android.content.BroadcastReceiver
 import android.content.Context

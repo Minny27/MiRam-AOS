@@ -1,4 +1,4 @@
-package com.example.miram.shared.style
+package com.seungmin.miram.shared.style
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height

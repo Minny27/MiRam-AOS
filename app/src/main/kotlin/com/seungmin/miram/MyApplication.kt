@@ -1,9 +1,9 @@
-package com.example.miram
+package com.seungmin.miram
 
 import android.app.Application
 import android.content.Context
-import com.example.miram.shared.alarm.AlarmNotificationHelper
-import com.example.miram.shared.style.withFixedFontScale
+import com.seungmin.miram.shared.alarm.AlarmNotificationHelper
+import com.seungmin.miram.shared.style.withFixedFontScale
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp

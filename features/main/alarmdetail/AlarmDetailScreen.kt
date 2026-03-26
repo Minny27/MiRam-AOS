@@ -1,4 +1,4 @@
-package com.example.miram.features.main.alarmdetail
+package com.seungmin.miram.features.main.alarmdetail
 
 import android.app.Activity
 import android.app.AlertDialog as PlatformAlertDialog
@@ -79,12 +79,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.miram.shared.alarm.AlarmRuntimeRequirements
-import com.example.miram.shared.model.RingDuration
-import com.example.miram.shared.model.Weekday
-import com.example.miram.shared.style.AccentColor
-import com.example.miram.shared.style.Background
-import com.example.miram.shared.style.BackgroundGray
+import com.seungmin.miram.shared.alarm.AlarmRuntimeRequirements
+import com.seungmin.miram.shared.model.RingDuration
+import com.seungmin.miram.shared.model.Weekday
+import com.seungmin.miram.shared.style.AccentColor
+import com.seungmin.miram.shared.style.Background
+import com.seungmin.miram.shared.style.BackgroundGray
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale

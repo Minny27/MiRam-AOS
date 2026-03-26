@@ -1,4 +1,4 @@
-package com.example
+package com.seungmin.miram
 
 import android.content.Context
 import android.content.Intent
@@ -11,9 +11,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.example.miram.routes.main.MainRoute
-import com.example.miram.shared.style.MiRamTheme
-import com.example.miram.shared.style.withFixedFontScale
+import com.seungmin.miram.routes.main.MainRoute
+import com.seungmin.miram.shared.style.MiRamTheme
+import com.seungmin.miram.shared.style.withFixedFontScale
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint

@@ -1,4 +1,4 @@
-package com.example.miram.shared.alarm
+package com.seungmin.miram.shared.alarm
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -7,7 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
-import com.example.MainActivity
+import com.seungmin.miram.MainActivity
 
 object AlarmNotificationHelper {
     const val CHANNEL_ID = "alarm_channel"

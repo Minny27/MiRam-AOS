@@ -1,4 +1,4 @@
-package com.example.miram.shared.alarm
+package com.seungmin.miram.shared.alarm
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

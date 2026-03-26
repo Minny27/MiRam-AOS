@@ -1,4 +1,4 @@
-package com.example.miram.routes.main
+package com.seungmin.miram.routes.main
 
 import android.net.Uri
 import androidx.compose.runtime.Composable
@@ -10,10 +10,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.miram.features.main.alarmdetail.AlarmDetailScreen
-import com.example.miram.features.main.alarmringing.AlarmRingingScreen
-import com.example.miram.features.main.home.HomeScreen
-import com.example.miram.shared.alarm.AlarmStateHolder
+import com.seungmin.miram.features.main.alarmdetail.AlarmDetailScreen
+import com.seungmin.miram.features.main.alarmringing.AlarmRingingScreen
+import com.seungmin.miram.features.main.home.HomeScreen
+import com.seungmin.miram.shared.alarm.AlarmStateHolder
 
 sealed interface MainDestination {
     val route: String

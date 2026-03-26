@@ -1,4 +1,4 @@
-package com.example.miram.shared.alarm
+package com.seungmin.miram.shared.alarm
 
 import android.app.Service
 import android.content.Context
@@ -185,7 +185,7 @@ class AlarmForegroundService : Service() {
     }
 
     companion object {
-        const val ACTION_STOP = "com.example.miram.ACTION_ALARM_STOP"
-        const val ACTION_SNOOZE = "com.example.miram.ACTION_ALARM_SNOOZE"
+        const val ACTION_STOP = "com.seungmin.miram.ACTION_ALARM_STOP"
+        const val ACTION_SNOOZE = "com.seungmin.miram.ACTION_ALARM_SNOOZE"
     }
 }

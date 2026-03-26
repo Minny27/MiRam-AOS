@@ -1,9 +1,9 @@
-package com.example.miram.shared.alarm
+package com.seungmin.miram.shared.alarm
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.example.miram.shared.data.AlarmRepository
+import com.seungmin.miram.shared.data.AlarmRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

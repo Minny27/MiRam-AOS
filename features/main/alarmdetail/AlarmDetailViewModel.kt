@@ -1,4 +1,4 @@
-package com.example.miram.features.main.alarmdetail
+package com.seungmin.miram.features.main.alarmdetail
 
 import android.content.Context
 import android.media.RingtoneManager
@@ -6,13 +6,13 @@ import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.miram.shared.data.AlarmRepository
-import com.example.miram.shared.model.Alarm
-import com.example.miram.shared.model.RingDuration
-import com.example.miram.shared.model.Weekday
-import com.example.miram.shared.model.toRepeatDaysString
-import com.example.miram.shared.model.normalizeSpecificDateMillis
-import com.example.miram.shared.model.wasSpecificDateAdjusted
+import com.seungmin.miram.shared.data.AlarmRepository
+import com.seungmin.miram.shared.model.Alarm
+import com.seungmin.miram.shared.model.RingDuration
+import com.seungmin.miram.shared.model.Weekday
+import com.seungmin.miram.shared.model.toRepeatDaysString
+import com.seungmin.miram.shared.model.normalizeSpecificDateMillis
+import com.seungmin.miram.shared.model.wasSpecificDateAdjusted
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow

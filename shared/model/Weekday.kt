@@ -1,4 +1,4 @@
-package com.example.miram.shared.model
+package com.seungmin.miram.shared.model
 
 enum class Weekday(val value: Int, val label: String) {
     MON(1, "월"),

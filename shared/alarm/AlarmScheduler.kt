@@ -1,14 +1,14 @@
-package com.example.miram.shared.alarm
+package com.seungmin.miram.shared.alarm
 
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import com.example.miram.shared.model.Alarm
-import com.example.miram.shared.model.Weekday
-import com.example.miram.shared.model.nextTriggerAtMillis
-import com.example.miram.shared.model.toCalendarDayOfWeek
-import com.example.miram.shared.model.withNormalizedSpecificDate
+import com.seungmin.miram.shared.model.Alarm
+import com.seungmin.miram.shared.model.Weekday
+import com.seungmin.miram.shared.model.nextTriggerAtMillis
+import com.seungmin.miram.shared.model.toCalendarDayOfWeek
+import com.seungmin.miram.shared.model.withNormalizedSpecificDate
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton

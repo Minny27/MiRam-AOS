@@ -1,12 +1,12 @@
-package com.example.miram.shared.di
+package com.seungmin.miram.shared.di
 
 import android.content.Context
 import androidx.room.Room
-import com.example.miram.shared.alarm.AlarmScheduler
-import com.example.miram.shared.data.AlarmDao
-import com.example.miram.shared.data.AlarmDatabase
-import com.example.miram.shared.data.AlarmRepository
-import com.example.miram.shared.data.AlarmRepositoryImpl
+import com.seungmin.miram.shared.alarm.AlarmScheduler
+import com.seungmin.miram.shared.data.AlarmDao
+import com.seungmin.miram.shared.data.AlarmDatabase
+import com.seungmin.miram.shared.data.AlarmRepository
+import com.seungmin.miram.shared.data.AlarmRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.Provides

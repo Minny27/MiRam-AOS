@@ -1,6 +1,6 @@
-package com.example.miram.shared.data
+package com.seungmin.miram.shared.data
 
-import com.example.miram.shared.model.Alarm
+import com.seungmin.miram.shared.model.Alarm
 import kotlinx.coroutines.flow.Flow
 
 interface AlarmRepository {

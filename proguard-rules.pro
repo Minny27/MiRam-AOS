@@ -1,2 +1,2 @@
 # Add project specific ProGuard rules here.
--keep class com.example.miram.** { *; }
+-keep class com.seungmin.miram.** { *; }

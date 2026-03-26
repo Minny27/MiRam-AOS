@@ -1,4 +1,4 @@
-package com.example.miram.shared.style
+package com.seungmin.miram.shared.style
 
 import android.content.Context
 import android.content.res.Configuration

@@ -1,7 +1,7 @@
-package com.example.miram.shared.alarm
+package com.seungmin.miram.shared.alarm
 
 import android.content.Intent
-import com.example.miram.shared.model.Alarm
+import com.seungmin.miram.shared.model.Alarm
 
 data class AlarmPayload(
     val alarmId: String,

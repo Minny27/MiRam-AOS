@@ -1,4 +1,4 @@
-package com.example.miram.features.main.home
+package com.seungmin.miram.features.main.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -57,11 +57,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.miram.shared.model.Alarm
-import com.example.miram.shared.model.Weekday
-import com.example.miram.shared.style.AccentColor
-import com.example.miram.shared.style.Background
-import com.example.miram.shared.style.BackgroundGray
+import com.seungmin.miram.shared.model.Alarm
+import com.seungmin.miram.shared.model.Weekday
+import com.seungmin.miram.shared.style.AccentColor
+import com.seungmin.miram.shared.style.Background
+import com.seungmin.miram.shared.style.BackgroundGray
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale

@@ -1,4 +1,4 @@
-package com.example.miram.features.main.alarmringing
+package com.seungmin.miram.features.main.alarmringing
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons

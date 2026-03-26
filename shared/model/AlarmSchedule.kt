@@ -1,4 +1,4 @@
-package com.example.miram.shared.model
+package com.seungmin.miram.shared.model
 
 import java.util.Calendar
 

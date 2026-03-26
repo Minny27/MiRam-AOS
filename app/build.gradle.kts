@@ -30,7 +30,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.miram"
+    namespace = "com.seungmin.miram"
     compileSdk = 35
 
     defaultConfig {

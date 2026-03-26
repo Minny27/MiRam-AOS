@@ -1,6 +1,9 @@
 package com.example
 
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,12 +13,23 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.example.miram.routes.main.MainRoute
 import com.example.miram.shared.style.MiRamTheme
+import com.example.miram.shared.style.withFixedFontScale
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context?) {
+        super.attachBaseContext(newBase?.withFixedFontScale())
+    }
+
+    override fun applyOverrideConfiguration(overrideConfiguration: Configuration?) {
+        overrideConfiguration?.fontScale = 1.0f
+        super.applyOverrideConfiguration(overrideConfiguration?.withFixedFontScale())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyAlarmWindowBehavior()
         enableEdgeToEdge()
         setContent {
             MiRamTheme {
@@ -31,5 +45,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        applyAlarmWindowBehavior()
+    }
+
+    private fun applyAlarmWindowBehavior() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
     }
 }

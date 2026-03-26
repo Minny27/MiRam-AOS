@@ -59,12 +59,16 @@ class AlarmForegroundService : Service() {
         if (currentAlarm.soundEnabled) startMediaPlayer(currentAlarm.soundUri)
         if (currentAlarm.vibrateEnabled) startVibration(currentAlarm.vibrationMode)
 
-        val scheduledStop = Runnable {
-            activeAlarm?.let(::scheduleSnooze)
-            stopAlarm()
+        if (currentAlarm.ringDuration > 0) {
+            val scheduledStop = Runnable {
+                activeAlarm?.let(::scheduleSnooze)
+                stopAlarm()
+            }
+            stopRunnable = scheduledStop
+            handler.postDelayed(scheduledStop, currentAlarm.ringDuration * 1000L)
+        } else {
+            stopRunnable = null
         }
-        stopRunnable = scheduledStop
-        handler.postDelayed(scheduledStop, currentAlarm.ringDuration * 1000L)
 
         return START_NOT_STICKY
     }

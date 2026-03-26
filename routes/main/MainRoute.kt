@@ -84,7 +84,7 @@ fun MainRoute() {
             arguments = listOf(
                 navArgument(MainDestination.AlarmRinging.alarmIdArg) { type = NavType.StringType },
                 navArgument(MainDestination.AlarmRinging.labelArg) { type = NavType.StringType; defaultValue = "" },
-                navArgument(MainDestination.AlarmRinging.ringDurationArg) { type = NavType.IntType; defaultValue = 60 }
+                navArgument(MainDestination.AlarmRinging.ringDurationArg) { type = NavType.IntType; defaultValue = 0 }
             )
         ) { backStackEntry ->
             val alarmId =
@@ -93,7 +93,7 @@ fun MainRoute() {
                 backStackEntry.arguments?.getString(MainDestination.AlarmRinging.labelArg)?.let(Uri::decode)
                     ?: ""
             val ringDuration =
-                backStackEntry.arguments?.getInt(MainDestination.AlarmRinging.ringDurationArg) ?: 60
+                backStackEntry.arguments?.getInt(MainDestination.AlarmRinging.ringDurationArg) ?: 0
             AlarmRingingScreen(
                 alarmId = alarmId,
                 label = label,

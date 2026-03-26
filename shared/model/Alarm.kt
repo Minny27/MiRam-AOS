@@ -13,8 +13,8 @@ data class Alarm(
     val repeatDays: String = "",
     val label: String = "",
     val isEnabled: Boolean = true,
-    /** 초 단위 (5~60) */
-    val ringDuration: Int = 60,
+    /** 초 단위 (0 = 계속 울림, 5~60) */
+    val ringDuration: Int = 0,
     /** 시스템 린톤 URI 문자열. 빈 문자열 = 시스템 기본 알람 */
     val soundUri: String = "",
     val soundEnabled: Boolean = true,

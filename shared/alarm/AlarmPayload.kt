@@ -61,7 +61,7 @@ data class AlarmPayload(
                 label = intent.getStringExtra(AlarmExtras.ALARM_LABEL).orEmpty(),
                 hour = intent.getIntExtra(AlarmExtras.ALARM_HOUR, 0),
                 minute = intent.getIntExtra(AlarmExtras.ALARM_MINUTE, 0),
-                ringDuration = intent.getIntExtra(AlarmExtras.RING_DURATION, 60),
+                ringDuration = intent.getIntExtra(AlarmExtras.RING_DURATION, 0),
                 soundUri = intent.getStringExtra(AlarmExtras.SOUND_URI).orEmpty(),
                 soundEnabled = intent.getBooleanExtra(AlarmExtras.SOUND_ENABLED, true),
                 vibrateEnabled = intent.getBooleanExtra(AlarmExtras.VIBRATE_ENABLED, true),

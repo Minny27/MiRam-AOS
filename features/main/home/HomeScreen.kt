@@ -65,7 +65,6 @@ import com.example.miram.shared.style.BackgroundGray
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-import kotlin.math.ceil
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -560,15 +559,13 @@ private fun rememberRecentAlarmSummary(alarms: List<Alarm>): RecentAlarmSummary 
     val (alarm, triggerAtMillis) = nextEnabled
     val diffMillis = (triggerAtMillis - now.timeInMillis).coerceAtLeast(0L)
     val diffMinute = (diffMillis / 60000L).toInt()
+    val dayDiff = calendarDayDiff(now, triggerAtMillis)
 
     val hours = diffMinute / 60
     val mins = diffMinute % 60
     val remain = when {
         diffMinute == 0 -> "곧 알람이 울립니다"
-        diffMillis >= 24 * 60 * 60 * 1000L -> "${
-            ceil(diffMillis / (24 * 60 * 60 * 1000.0)).toInt()
-        }일 후에 알람이 울립니다"
-
+        dayDiff > 0 -> "${dayDiff}일 후에 알람이 울립니다"
         hours == 0 -> "${mins}분 후에 알람이 울립니다"
         mins == 0 -> "${hours}시간 후에 알람이 울립니다"
         else -> "${hours}시간 ${mins}분 후에 알람이 울립니다"
@@ -585,6 +582,23 @@ private fun rememberRecentAlarmSummary(alarms: List<Alarm>): RecentAlarmSummary 
         isOffState = false,
         isEmptyState = false
     )
+}
+
+private fun calendarDayDiff(now: Calendar, triggerAtMillis: Long): Int {
+    val startOfToday = (now.clone() as Calendar).apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    val triggerDay = Calendar.getInstance().apply {
+        timeInMillis = triggerAtMillis
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    return ((triggerDay.timeInMillis - startOfToday.timeInMillis) / (24 * 60 * 60 * 1000L)).toInt()
 }
 
 private data class RecentAlarmSummary(

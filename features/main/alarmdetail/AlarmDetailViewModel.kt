@@ -25,8 +25,9 @@ data class AlarmDetailUiState(
     val hour: Int = 8,
     val minute: Int = 0,
     val label: String = "",
+    val isLabelLimitExceeded: Boolean = false,
     val selectedDays: Set<Weekday> = emptySet(),
-    val ringDuration: Int = 10,
+    val ringDuration: Int = 0,
     val soundUri: String = "",
     val soundTitle: String = "기본 알람",
     val soundEnabled: Boolean = true,
@@ -47,6 +48,10 @@ class AlarmDetailViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+    private companion object {
+        const val MAX_ALARM_LABEL_LENGTH = 40
+    }
+
     private data class AlarmDetailDraft(
         val hour: Int,
         val minute: Int,
@@ -94,7 +99,8 @@ class AlarmDetailViewModel @Inject constructor(
             setInitialState(_uiState.value.copy(
                 hour = alarm.hour,
                 minute = alarm.minute,
-                label = alarm.label,
+                label = alarm.label.take(MAX_ALARM_LABEL_LENGTH),
+                isLabelLimitExceeded = alarm.label.length > MAX_ALARM_LABEL_LENGTH,
                 selectedDays = alarm.repeatWeekdays().toSet(),
                 ringDuration = RingDuration.normalize(alarm.ringDuration),
                 soundUri = alarm.soundUri,
@@ -117,7 +123,15 @@ class AlarmDetailViewModel @Inject constructor(
 
     fun onHourChange(hour: Int) = updateState { copy(hour = hour) }
     fun onMinuteChange(minute: Int) = updateState { copy(minute = minute) }
-    fun onLabelChange(label: String) = updateState { copy(label = label) }
+    fun onLabelChange(label: String) {
+        val normalizedLabel = label.take(MAX_ALARM_LABEL_LENGTH)
+        updateState {
+            copy(
+                label = normalizedLabel,
+                isLabelLimitExceeded = label.length > MAX_ALARM_LABEL_LENGTH
+            )
+        }
+    }
     fun onRingDurationChange(seconds: Int) {
         updateState { copy(ringDuration = RingDuration.normalize(seconds)) }
     }
@@ -216,9 +230,9 @@ class AlarmDetailViewModel @Inject constructor(
     private fun AlarmDetailUiState.toDraft(): AlarmDetailDraft = AlarmDetailDraft(
         hour = hour,
         minute = minute,
-        label = label,
-        selectedDays = selectedDays,
-        ringDuration = ringDuration,
+            label = label,
+            selectedDays = selectedDays,
+            ringDuration = ringDuration,
         soundUri = soundUri,
         soundTitle = soundTitle,
         soundEnabled = soundEnabled,

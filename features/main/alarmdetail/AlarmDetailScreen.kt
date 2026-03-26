@@ -102,6 +102,7 @@ fun AlarmDetailScreen(
     val context = LocalContext.current
     var showDiscardDialog by remember { mutableStateOf(false) }
     var showExactAlarmPermissionDialog by remember { mutableStateOf(false) }
+    var showFullScreenIntentPermissionDialog by remember { mutableStateOf(false) }
     var showBatteryOptimizationDialog by remember { mutableStateOf(false) }
     val latestOnBack by rememberUpdatedState(onBack)
     val latestSave by rememberUpdatedState(viewModel::save)
@@ -114,6 +115,10 @@ fun AlarmDetailScreen(
         when {
             AlarmRuntimeRequirements.needsExactAlarmPermission(context) -> {
                 showExactAlarmPermissionDialog = true
+            }
+
+            AlarmRuntimeRequirements.needsFullScreenIntentPermission(context) -> {
+                showFullScreenIntentPermissionDialog = true
             }
 
             AlarmRuntimeRequirements.needsBatteryOptimizationExemption(context) -> {
@@ -174,6 +179,12 @@ fun AlarmDetailScreen(
         if (!AlarmRuntimeRequirements.needsBatteryOptimizationExemption(context)) {
             latestSave()
         }
+    }
+
+    val fullScreenIntentPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        completeSaveIfReady()
     }
 
     Scaffold(
@@ -265,7 +276,13 @@ fun AlarmDetailScreen(
                         onValueChange = viewModel::onLabelChange,
                         label = { Text("알람 이름") },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        isError = uiState.isLabelLimitExceeded,
+                        supportingText = {
+                            if (uiState.isLabelLimitExceeded) {
+                                Text("40자까지 입력할 수 있습니다.")
+                            }
+                        }
                     )
 
                     SoundSettingRow(
@@ -389,6 +406,33 @@ fun AlarmDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showBatteryOptimizationDialog = false }) {
+                    Text("닫기")
+                }
+            }
+        )
+    }
+
+    if (showFullScreenIntentPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showFullScreenIntentPermissionDialog = false },
+            title = { Text("전체화면 알람 표시 권한 필요") },
+            text = {
+                Text("대기 화면이나 잠금 화면에서도 알람이 화면을 켜며 표시되려면 전체화면 알람 표시 권한이 필요합니다.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showFullScreenIntentPermissionDialog = false
+                        fullScreenIntentPermissionLauncher.launch(
+                            AlarmRuntimeRequirements.fullScreenIntentSettingsIntent(context)
+                        )
+                    }
+                ) {
+                    Text("설정으로 이동")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFullScreenIntentPermissionDialog = false }) {
                     Text("닫기")
                 }
             }

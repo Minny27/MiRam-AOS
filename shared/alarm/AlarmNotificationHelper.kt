@@ -60,6 +60,7 @@ object AlarmNotificationHelper {
             .setContentText(alarm.timeText)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setContentIntent(fullScreenPi)
             .setFullScreenIntent(fullScreenPi, true)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "해제", stopPi)
             .setOngoing(true)

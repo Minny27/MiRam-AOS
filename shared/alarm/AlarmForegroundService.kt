@@ -34,12 +34,16 @@ class AlarmForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
-            stopAlarm()
+            stopAlarm(clearCycle = true)
             return START_NOT_STICKY
         }
         if (intent?.action == ACTION_SNOOZE) {
-            intent?.let(AlarmPayload.Companion::fromIntent)?.let(::scheduleSnooze)
-            stopAlarm()
+            val pendingAlarm = intent?.let(AlarmPayload.Companion::fromIntent)
+            val nextSnooze = pendingAlarm?.let(::scheduleSnooze)
+            stopAlarm(
+                clearCycle = nextSnooze == null,
+                nextSnooze = nextSnooze
+            )
             return START_NOT_STICKY
         }
 
@@ -61,8 +65,11 @@ class AlarmForegroundService : Service() {
 
         if (currentAlarm.ringDuration > 0) {
             val scheduledStop = Runnable {
-                activeAlarm?.let(::scheduleSnooze)
-                stopAlarm()
+                val nextSnooze = activeAlarm?.let(::scheduleSnooze)
+                stopAlarm(
+                    clearCycle = nextSnooze == null,
+                    nextSnooze = nextSnooze
+                )
             }
             stopRunnable = scheduledStop
             handler.postDelayed(scheduledStop, currentAlarm.ringDuration * 1000L)
@@ -73,9 +80,20 @@ class AlarmForegroundService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun scheduleSnooze(alarm: AlarmPayload) {
-        if (!alarm.snoozeEnabled || alarm.snoozeRepeatCount <= 0) return
-        scheduler.scheduleSnooze(alarm.copy(snoozeRepeatCount = alarm.snoozeRepeatCount - 1))
+    private data class PendingSnooze(
+        val triggerAtMillis: Long,
+        val remainingSnoozeCount: Int
+    )
+
+    private fun scheduleSnooze(alarm: AlarmPayload): PendingSnooze? {
+        if (!alarm.snoozeEnabled || alarm.snoozeRepeatCount <= 0) return null
+        val triggerAtMillis = scheduler.scheduleSnooze(
+            alarm.copy(snoozeRepeatCount = alarm.snoozeRepeatCount - 1)
+        )
+        return PendingSnooze(
+            triggerAtMillis = triggerAtMillis,
+            remainingSnoozeCount = alarm.snoozeRepeatCount
+        )
     }
 
     private fun requestAudioFocus() {
@@ -135,9 +153,19 @@ class AlarmForegroundService : Service() {
         }
     }
 
-    private fun stopAlarm() {
-        activeAlarm = null
+    private fun stopAlarm(clearCycle: Boolean, nextSnooze: PendingSnooze? = null) {
+        val alarmId = activeAlarm?.alarmId
         AlarmStateHolder.stopRinging()
+        if (clearCycle) {
+            AlarmStateHolder.clearCycle(alarmId)
+        } else if (alarmId != null) {
+            AlarmStateHolder.keepCyclePending(
+                alarmId = alarmId,
+                nextRingAtMillis = nextSnooze!!.triggerAtMillis,
+                remainingSnoozeCount = nextSnooze.remainingSnoozeCount
+            )
+        }
+        activeAlarm = null
         stopRunnable?.let { handler.removeCallbacks(it) }
         mediaPlayer?.runCatching { if (isPlaying) stop(); release() }
         mediaPlayer = null

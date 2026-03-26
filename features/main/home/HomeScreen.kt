@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.seungmin.miram.shared.alarm.AlarmStateHolder
 import com.seungmin.miram.shared.model.Alarm
 import com.seungmin.miram.shared.model.Weekday
 import com.seungmin.miram.shared.style.AccentColor
@@ -74,6 +75,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val activeAlarmCycle by AlarmStateHolder.activeAlarmCycle.collectAsState()
     var showMoreMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
 
@@ -156,7 +158,7 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp)
         ) {
             if (!uiState.selectionMode) {
-                val summary = rememberRecentAlarmSummary(uiState.alarms)
+                val summary = rememberRecentAlarmSummary(uiState.alarms, activeAlarmCycle)
                 val listState = rememberLazyListState()
                 val isActionRowPinned by remember {
                     derivedStateOf { listState.firstVisibleItemIndex > 0 }
@@ -534,7 +536,10 @@ private fun AlarmRow(
 }
 
 @Composable
-private fun rememberRecentAlarmSummary(alarms: List<Alarm>): RecentAlarmSummary {
+private fun rememberRecentAlarmSummary(
+    alarms: List<Alarm>,
+    activeAlarmCycle: AlarmStateHolder.ActiveAlarmCycle?
+): RecentAlarmSummary {
     if (alarms.isEmpty()) {
         return RecentAlarmSummary(
             title = "알림",
@@ -545,6 +550,31 @@ private fun rememberRecentAlarmSummary(alarms: List<Alarm>): RecentAlarmSummary 
         )
     }
     val now = Calendar.getInstance()
+    activeAlarmCycle?.let { active ->
+        alarms.firstOrNull { it.id == active.alarmId }?.let { alarm ->
+            val summaryTimeMillis = active.nextRingAtMillis ?: active.occurrenceAtMillis
+            val amPm = if (alarm.hour < 12) "오전" else "오후"
+            val hour12 = if (alarm.hour % 12 == 0) 12 else alarm.hour % 12
+            return RecentAlarmSummary(
+                title = if (active.isRinging) {
+                    "곧 알람이 울립니다"
+                } else {
+                    val nextRingAtMillis = active.nextRingAtMillis
+                    if (nextRingAtMillis != null) {
+                        val remainingMinutes =
+                            ((nextRingAtMillis - now.timeInMillis).coerceAtLeast(0L) / 60000L).toInt()
+                        "다시 울림 ${"%02d".format(remainingMinutes)}분 남았습니다"
+                    } else {
+                        "곧 알람이 울립니다"
+                    }
+                },
+                time = "$amPm $hour12:${"%02d".format(alarm.minute)}",
+                dateTime = SimpleDateFormat("M월 d일 (E) a h:mm", Locale.KOREAN).format(summaryTimeMillis),
+                isOffState = false,
+                isEmptyState = false
+            )
+        }
+    }
     val nextEnabled = alarms
         .filter { it.isEnabled }
         .mapNotNull { alarm -> nextTriggerTimeMillis(alarm, now)?.let { alarm to it } }

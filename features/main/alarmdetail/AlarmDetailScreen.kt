@@ -106,12 +106,14 @@ fun AlarmDetailScreen(
     var showBatteryOptimizationDialog by remember { mutableStateOf(false) }
     val latestOnBack by rememberUpdatedState(onBack)
     val latestSave by rememberUpdatedState(viewModel::save)
+    val latestValidateBeforeSave by rememberUpdatedState(viewModel::validateBeforeSave)
     val isDarkTheme = isSystemInDarkTheme()
     val screenBackground = if (isDarkTheme) Color.Black else Color.Background
     val cardBackground = if (isDarkTheme) Color.BackgroundGray else Color.White
     val contentColor = if (isDarkTheme) Color.White else Color.Black
 
     fun completeSaveIfReady() {
+        if (!latestValidateBeforeSave()) return
         when {
             AlarmRuntimeRequirements.needsExactAlarmPermission(context) -> {
                 showExactAlarmPermissionDialog = true
@@ -342,7 +344,7 @@ fun AlarmDetailScreen(
                     latestOnBack()
                 }
                 .setPositiveButton("저장") { _, _ ->
-                    latestSave()
+                    completeSaveIfReady()
                 }
                 .create()
             dialog.show()
@@ -477,7 +479,7 @@ private fun RepeatSection(
             "매주 $labels"
         }
 
-        else -> "내일-${formatter.format(tomorrow.time)}"
+        else -> "오늘-${formatter.format(today.time)}"
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -488,7 +490,7 @@ private fun RepeatSection(
         ) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             IconButton(onClick = {
-                val base = selectedDateMillis ?: tomorrow.timeInMillis
+                val base = selectedDateMillis ?: today.timeInMillis
                 val cal = Calendar.getInstance().apply { timeInMillis = base }
                 DatePickerDialog(
                     context,

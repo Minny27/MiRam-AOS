@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import javax.inject.Inject
 
 data class AlarmDetailUiState(
@@ -88,7 +89,8 @@ class AlarmDetailViewModel @Inject constructor(
                 minute = 0,
                 ringDuration = RingDuration.normalize(_uiState.value.ringDuration),
                 soundUri = defaultSoundUri?.toString().orEmpty(),
-                soundTitle = defaultSoundTitle
+                soundTitle = defaultSoundTitle,
+                selectedDateMillis = todayStartMillis()
             ))
         }
     }
@@ -168,20 +170,12 @@ class AlarmDetailViewModel @Inject constructor(
     fun save() {
         viewModelScope.launch {
             val s = _uiState.value
+            if (!isValidForSave(s)) return@launch
             val normalizedDateMillis = normalizeSpecificDateMillis(
                 selectedDateMillis = s.selectedDateMillis,
                 hour = s.hour,
                 minute = s.minute
             )
-            if (wasSpecificDateAdjusted(s.selectedDateMillis, s.hour, s.minute)) {
-                updateState { copy(selectedDateMillis = normalizedDateMillis) }
-                Toast.makeText(
-                    context,
-                    "이미 지난 날짜는 선택할 수 없어요. 알람이 내일 울리도록 설정했어요",
-                    Toast.LENGTH_LONG
-                ).show()
-                return@launch
-            }
             val alarm = Alarm(
                 id = alarmId ?: java.util.UUID.randomUUID().toString(),
                 hour = s.hour,
@@ -211,6 +205,8 @@ class AlarmDetailViewModel @Inject constructor(
             )
         }
     }
+
+    fun validateBeforeSave(): Boolean = isValidForSave(_uiState.value)
 
     private fun setInitialState(state: AlarmDetailUiState) {
         initialDraft = state.toDraft()
@@ -243,4 +239,45 @@ class AlarmDetailViewModel @Inject constructor(
         snoozeIntervalMinutes = snoozeIntervalMinutes,
         snoozeRepeatCount = snoozeRepeatCount
     )
+
+    private fun isValidForSave(state: AlarmDetailUiState): Boolean {
+        val now = Calendar.getInstance()
+        val hasSpecificDate = state.selectedDateMillis != null
+        val isOneTimeWithoutDate = !hasSpecificDate && state.selectedDays.isEmpty()
+
+        val isPastOrCurrent = when {
+            hasSpecificDate -> wasSpecificDateAdjusted(
+                selectedDateMillis = state.selectedDateMillis,
+                hour = state.hour,
+                minute = state.minute,
+                now = now
+            )
+            isOneTimeWithoutDate -> buildTodayTriggerAt(state.hour, state.minute, now) <= now.timeInMillis
+            else -> false
+        }
+
+        if (!isPastOrCurrent) return true
+
+        Toast.makeText(
+            context,
+            "현재 시간 이후로 알람 시간을 설정해 주세요",
+            Toast.LENGTH_LONG
+        ).show()
+        return false
+    }
+
+    private fun todayStartMillis(): Long = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    private fun buildTodayTriggerAt(hour: Int, minute: Int, now: Calendar): Long =
+        (now.clone() as Calendar).apply {
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
 }

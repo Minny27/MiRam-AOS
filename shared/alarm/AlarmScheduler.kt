@@ -69,7 +69,7 @@ class AlarmScheduler @Inject constructor(
     private fun oneTimeRequestCode(alarm: Alarm) = alarm.id.hashCode()
     private fun repeatingRequestCode(alarm: Alarm, weekday: Weekday) = (alarm.id + weekday.value).hashCode()
 
-    fun scheduleSnooze(alarm: AlarmPayload) {
+    fun scheduleSnooze(alarm: AlarmPayload): Long {
         val triggerAt = System.currentTimeMillis() + alarm.snoozeIntervalMinutes * 60 * 1000L
         val intent = alarm.fillIntent(Intent(context, AlarmReceiver::class.java))
         val pi = PendingIntent.getBroadcast(
@@ -79,5 +79,6 @@ class AlarmScheduler @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, pi), pi)
+        return triggerAt
     }
 }

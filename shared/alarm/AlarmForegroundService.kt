@@ -16,12 +16,20 @@ import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import com.seungmin.miram.shared.data.AlarmRepository
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import java.util.Calendar
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class AlarmForegroundService : Service() {
     @Inject lateinit var scheduler: AlarmScheduler
+    @Inject lateinit var repository: AlarmRepository
 
     private var mediaPlayer: MediaPlayer? = null
     private val handler = Handler(Looper.getMainLooper())
@@ -29,6 +37,7 @@ class AlarmForegroundService : Service() {
     private var audioFocusRequest: AudioFocusRequest? = null
     private var vibrator: Vibrator? = null
     private var activeAlarm: AlarmPayload? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -155,6 +164,9 @@ class AlarmForegroundService : Service() {
 
     private fun stopAlarm(clearCycle: Boolean, nextSnooze: PendingSnooze? = null) {
         val alarmId = activeAlarm?.alarmId
+        if (clearCycle && alarmId != null) {
+            finalizeDateAlarm(alarmId)
+        }
         AlarmStateHolder.stopRinging()
         if (clearCycle) {
             AlarmStateHolder.clearCycle(alarmId)
@@ -181,6 +193,7 @@ class AlarmForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        serviceScope.cancel()
         activeAlarm = null
         stopRunnable?.let { handler.removeCallbacks(it) }
         mediaPlayer?.runCatching { if (isPlaying) stop(); release() }
@@ -209,6 +222,27 @@ class AlarmForegroundService : Service() {
         } else {
             @Suppress("DEPRECATION")
             vib.vibrate(pattern, 0)
+        }
+    }
+
+    private fun finalizeDateAlarm(alarmId: String) {
+        serviceScope.launch {
+            val alarm = repository.getAlarmById(alarmId) ?: return@launch
+            val specificDateMillis = alarm.specificDateMillis ?: return@launch
+            val nextDateMillis = Calendar.getInstance().apply {
+                timeInMillis = specificDateMillis
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                add(Calendar.DAY_OF_YEAR, 1)
+            }.timeInMillis
+            repository.updateAlarm(
+                alarm.copy(
+                    specificDateMillis = nextDateMillis,
+                    isEnabled = false
+                )
+            )
         }
     }
 

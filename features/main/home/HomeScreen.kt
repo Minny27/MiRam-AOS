@@ -561,9 +561,14 @@ private fun rememberRecentAlarmSummary(
                 } else {
                     val nextRingAtMillis = active.nextRingAtMillis
                     if (nextRingAtMillis != null) {
-                        val remainingMinutes =
-                            ((nextRingAtMillis - now.timeInMillis).coerceAtLeast(0L) / 60000L).toInt()
-                        "다시 울림 ${"%02d".format(remainingMinutes)}분 남았습니다"
+                        val remainingMillis = (nextRingAtMillis - now.timeInMillis).coerceAtLeast(0L)
+                        val remainingSeconds = (remainingMillis / 1000L).toInt()
+                        if (remainingSeconds <= 59) {
+                            "다시 울림 ${"%02d".format(remainingSeconds)}초 남았습니다"
+                        } else {
+                            val remainingMinutes = remainingSeconds / 60
+                            "다시 울림 ${"%02d".format(remainingMinutes)}분 남았습니다"
+                        }
                     } else {
                         "곧 알람이 울립니다"
                     }

@@ -18,13 +18,16 @@ import javax.inject.Inject
 data class AlarmRingingUiState(
     val remainingSeconds: Int = 0,
     val totalSeconds: Int = 0,
+    val isUnlimited: Boolean = false,
     val isDismissed: Boolean = false
 ) {
     val progressFraction: Float
         get() = if (totalSeconds > 0) remainingSeconds.toFloat() / totalSeconds else 0f
 
     val remainingLabel: String
-        get() = com.seungmin.miram.shared.model.RingDuration.label(remainingSeconds)
+        get() = com.seungmin.miram.shared.model.RingDuration.label(
+            if (isUnlimited) 0 else remainingSeconds
+        )
 }
 
 @HiltViewModel
@@ -38,9 +41,16 @@ class AlarmRingingViewModel @Inject constructor(
     private var countdownJob: Job? = null
 
     fun initialize(ringDuration: Int) {
-        if (_uiState.value.totalSeconds > 0) return  // already initialized
-        _uiState.value = AlarmRingingUiState(remainingSeconds = ringDuration, totalSeconds = ringDuration)
-        startCountdown()
+        if (_uiState.value.totalSeconds > 0 || _uiState.value.isUnlimited) return
+        val normalizedDuration = ringDuration.coerceAtLeast(0)
+        _uiState.value = AlarmRingingUiState(
+            remainingSeconds = normalizedDuration,
+            totalSeconds = normalizedDuration,
+            isUnlimited = normalizedDuration == 0
+        )
+        if (normalizedDuration > 0) {
+            startCountdown()
+        }
     }
 
     fun dismiss() {

@@ -43,6 +43,12 @@ object AlarmRuntimeRequirements {
             data = Uri.parse("package:${context.packageName}")
         }
 
+    fun specialAppAccessSettingsIntent(): Intent =
+        Intent("android.settings.MANAGE_SPECIAL_APP_ACCESSES")
+
+    fun settingsFallbackIntent(): Intent =
+        Intent(Settings.ACTION_SETTINGS)
+
     fun batteryOptimizationFallbackIntent(): Intent =
         Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
 }

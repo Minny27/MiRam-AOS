@@ -10,7 +10,7 @@ ksp                 = "2.1.10-1.0.31"
 
 coreKtx             = "1.16.0"
 activityCompose     = "1.10.1"
-composeBom          = "2025.04.00"
+composeBom          = "2025.12.01"
 lifecycle           = "2.9.0"
 material = "1.13.0"
 navigationCompose   = "2.9.0"

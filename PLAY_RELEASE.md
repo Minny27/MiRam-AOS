@@ -67,7 +67,7 @@ cp key.properties.example key.properties
 Fill in:
 
 ```properties
-storeFile=/absolute/path/to/your-release-key.jks
+storeFile=miram-release-key.jks
 storePassword=...
 keyAlias=upload
 keyPassword=...

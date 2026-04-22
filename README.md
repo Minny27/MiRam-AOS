@@ -6,8 +6,8 @@ MiRam은 Jetpack Compose 기반의 Android 알람 앱입니다. exact alarm을 �
 
 - 앱 이름: `MiRam`
 - 패키지명: `com.seungmin.miram`
-- 버전: `1.0.2`
-- 버전 코드: `4`
+- 버전: `1.0.4`
+- 버전 코드: `6`
 - `minSdk`: `26`
 - `targetSdk`: `35`
 - `compileSdk`: `35`
@@ -109,7 +109,7 @@ Android 버전에 따라 일부 요구사항은 체크되지 않습니다.
 - JDK 17
 - Gradle 8.x
 
-`gradle.properties`에 `org.gradle.java.home`이 Android Studio 내장 JBR 경로로 지정되어 있습니다. 환경이 다르면 이 값을 로컬에 맞게 조정해야 합니다.
+CI와 로컬 환경 모두 `JAVA_HOME` 또는 Android Studio의 Gradle JDK 설정을 사용합니다.
 
 ## 빌드 및 실행
 
@@ -124,6 +124,34 @@ Android 버전에 따라 일부 요구사항은 체크되지 않습니다.
 ```bash
 ./gradlew :app:compileDebugKotlin
 ```
+
+fastlane 기반 CI 검증:
+
+```bash
+bundle exec fastlane android ci
+```
+
+릴리즈 AAB 빌드:
+
+```bash
+bundle exec fastlane android build_release
+```
+
+Google Play 업로드:
+
+```bash
+bundle exec fastlane android deploy
+```
+
+로컬 배포 시 서비스 계정 JSON은 루트의 `play-service-account.json` 또는 `fastlane/play-service-account.json`에 둡니다.
+
+GitHub Actions의 `Release` workflow로 배포하려면 아래 Secrets가 필요합니다.
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+- `GOOGLE_PLAY_JSON_KEY_DATA`
 
 디바이스 설치:
 

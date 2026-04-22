@@ -1,0 +1,66 @@
+default_platform(:android)
+
+platform :android do
+  desc "Run CI checks and build the debug APK"
+  lane :ci do
+    gradle(
+      tasks: ["lintDebug", "testDebugUnitTest", "assembleDebug"],
+      project_dir: "."
+    )
+  end
+
+  desc "Build a debug APK"
+  lane :build_debug do
+    gradle(
+      task: "assembleDebug",
+      project_dir: "."
+    )
+  end
+
+  desc "Build a signed release Android App Bundle"
+  lane :build_release do
+    gradle(
+      task: "bundleRelease",
+      project_dir: "."
+    )
+  end
+
+  desc "Upload the release Android App Bundle to Google Play"
+  lane :deploy do
+    build_release
+
+    json_key_data = ENV["GOOGLE_PLAY_JSON_KEY_DATA"] || ENV["SUPPLY_JSON_KEY_DATA"]
+    json_key_file = ENV["GOOGLE_PLAY_JSON_KEY_FILE"] || ENV["SUPPLY_JSON_KEY"]
+    json_key_file ||= [
+      File.expand_path("../play-service-account.json", __dir__),
+      File.expand_path("play-service-account.json", __dir__)
+    ].find { |path| File.exist?(path) }
+
+    upload_options = {
+      package_name: "com.seungmin.miram",
+      track: ENV.fetch("PLAY_TRACK", "internal"),
+      release_status: ENV.fetch("PLAY_RELEASE_STATUS", "completed"),
+      aab: "app/build/outputs/bundle/release/app-release.aab",
+      skip_upload_apk: true,
+      skip_upload_aab: false,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      changes_not_sent_for_review: ENV.fetch("PLAY_CHANGES_NOT_SENT_FOR_REVIEW", "true") == "true"
+    }
+
+    if !json_key_data.to_s.empty?
+      upload_options[:json_key_data] = json_key_data
+    elsif !json_key_file.to_s.empty? && File.exist?(json_key_file)
+      upload_options[:json_key] = json_key_file
+    else
+      UI.user_error!(
+        "Google Play credentials are required. Set GOOGLE_PLAY_JSON_KEY_DATA " \
+          "or GOOGLE_PLAY_JSON_KEY_FILE, or place the JSON at play-service-account.json."
+      )
+    end
+
+    upload_to_play_store(upload_options)
+  end
+end

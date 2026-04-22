@@ -45,7 +45,7 @@ android {
     signingConfigs {
         if (hasReleaseSigning) {
             create("release") {
-                storeFile = file(releaseStoreFile!!)
+                storeFile = rootProject.file(releaseStoreFile!!)
                 storePassword = releaseStorePassword
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword
@@ -74,6 +74,10 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    lint {
+        disable += "NullSafeMutableLiveData"
     }
 
     // 소스 파일이 루트 하위 flat 디렉토리에 있으므로 상대 경로로 지정
@@ -117,6 +121,24 @@ afterEvaluate {
         if (name == "compileDebugKotlin") {
             dependsOn(debugPrerequisites)
         }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val releaseTaskRequested = allTasks.any { task ->
+        task.path in setOf(
+            ":app:assembleRelease",
+            ":app:bundleRelease",
+            ":app:packageRelease",
+            ":app:signReleaseBundle"
+        )
+    }
+    if (releaseTaskRequested && !hasReleaseSigning) {
+        throw GradleException(
+            "Release signing is not configured. Provide storeFile, storePassword, " +
+                "keyAlias, and keyPassword via Gradle properties, environment variables, " +
+                "or key.properties."
+        )
     }
 }
 

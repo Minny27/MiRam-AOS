@@ -14,6 +14,12 @@ local.properties
 captures/
 .externalNativeBuild/
 .cxx/
+fastlane/README.md
+fastlane/report.xml
+fastlane/.env
+fastlane/.env.*
+play-service-account.json
+fastlane/play-service-account.json
 
 # Signing
 *.jks
